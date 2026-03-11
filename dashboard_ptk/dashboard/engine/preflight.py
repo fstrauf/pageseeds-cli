@@ -129,13 +129,33 @@ class ProjectPreflight:
                 "Create/restore articles.json before running content workflows.",
             )
 
+        # Check for project configuration files (templates created during init)
+        config_files = [
+            (automation_dir / "manifest.json", "manifest"),
+            (automation_dir / "brandvoice.md", "brandvoice"),
+            (automation_dir / "project_summary.md", "project_summary"),
+            (automation_dir / "seo_content_brief.md", "seo_content_brief"),
+        ]
+        
+        missing_config = []
+        for path, name in config_files:
+            if not path.exists():
+                missing_config.append((name, path))
+        
+        if missing_config:
+            for name, path in missing_config:
+                report.add(
+                    "warning",
+                    f"config_{name}",
+                    f"Missing project config file: {path.name}",
+                    f"Create {path.name} or re-run project initialization to generate templates.",
+                )
+
         if not self.website_id:
             return
 
         reddit_files = [
-            automation_dir / f"{self.website_id}.md",
             automation_dir / "reddit_config.md",
-            automation_dir / "brandvoice.md",
             automation_dir / "reddit" / "_reply_guardrails.md",
         ]
         missing = [path for path in reddit_files if not path.exists()]
@@ -143,7 +163,7 @@ class ProjectPreflight:
             report.add(
                 "warning",
                 "reddit_config",
-                f"Reddit workflow config missing ({len(missing)} file(s)).",
+                f"Reddit workflow config missing ({len(missing)} file(s))",
                 "Add missing files under .github/automation before running reddit_opportunity_search.",
             )
 

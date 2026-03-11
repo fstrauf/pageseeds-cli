@@ -135,6 +135,233 @@ class DashboardVerificationMixin:
             console.print(f"[red]Error fixing dates: {e}[/red]")
             return 0
 
+    def _repair_templates(self, auto_dir: Path, website_id: str, missing_templates: list) -> int:
+        """Create missing template files.
+
+        Args:
+            auto_dir: Automation directory path
+            website_id: Website ID for the project
+            missing_templates: List of (name, path) tuples for missing templates
+
+        Returns:
+            Number of templates created
+        """
+        from .core.project_manager import ProjectManager
+        
+        # Create a temporary ProjectManager just to use its template creation method
+        pm = ProjectManager()
+        
+        created = 0
+        try:
+            for name, path in missing_templates:
+                if name == "brandvoice.md":
+                    content = self._get_brandvoice_template()
+                elif name == "project_summary.md":
+                    content = self._get_project_summary_template(website_id)
+                elif name == "seo_content_brief.md":
+                    content = self._get_seo_brief_template(website_id)
+                elif name == "reddit_config.md":
+                    content = self._get_reddit_config_template(website_id)
+                else:
+                    continue
+                
+                path.write_text(content)
+                console.print(f"[dim]  Created: {name}[/dim]")
+                created += 1
+            
+            # Also create orchestrator_policy.json if missing
+            policy_path = auto_dir / "orchestrator_policy.json"
+            if not policy_path.exists():
+                policy = {"version": "1.0", "website_id": website_id, "rules": [], "schedules": []}
+                policy_path.write_text(json.dumps(policy, indent=2))
+                console.print(f"[dim]  Created: orchestrator_policy.json[/dim]")
+                created += 1
+                
+        except Exception as e:
+            console.print(f"[red]Error creating templates: {e}[/red]")
+        
+        return created
+
+    def _get_brandvoice_template(self) -> str:
+        return """# Brand Voice Guidelines
+
+## Tone
+- Professional but approachable
+- Clear and concise
+- Helpful and educational
+
+## Voice Characteristics
+- **Knowledgeable**: Demonstrate expertise in your domain
+- **Practical**: Focus on actionable insights
+- **Transparent**: Be honest about limitations and trade-offs
+- **Conversational**: Write like you're talking to a colleague
+
+## Language Style
+- Use industry terminology correctly
+- Avoid hype or promotional language
+- Keep sentences clear and concise
+- Use first person when sharing experience
+
+## What to Avoid
+- Overpromising results
+- Aggressive self-promotion
+- Jargon without context
+- Being dismissive of alternatives
+"""
+
+    def _get_project_summary_template(self, website_id: str) -> str:
+        return f"""# Project Summary: {website_id}
+
+## Platform Overview
+
+Brief description of what this project does and who it serves.
+
+---
+
+## Core Features
+
+### Feature 1: [Name]
+Description of the feature and its value proposition.
+
+**Search Keywords:**
+- "keyword 1"
+- "keyword 2"
+
+---
+
+### Feature 2: [Name]
+Description of the feature and its value proposition.
+
+---
+
+## Content Pillars for SEO
+
+### Pillar 1: [Topic Area]
+- Subtopic 1
+- Subtopic 2
+
+### Pillar 2: [Topic Area]
+- Subtopic 1
+- Subtopic 2
+
+---
+
+## Target Audience
+
+- **Primary audience**: Description
+- **Secondary audience**: Description
+
+---
+
+## Key Differentiators
+
+1. **Differentiator 1**: Description
+2. **Differentiator 2**: Description
+
+---
+
+## User Workflows
+
+### Workflow 1: [Name]
+1. Step 1
+2. Step 2
+3. Step 3
+
+---
+
+## Data & Integrations
+
+### Data Sources
+- Source 1
+- Source 2
+
+---
+
+## Target Communities (for Reddit)
+- r/example1
+- r/example2
+
+---
+
+## TODO: Fill in this template
+
+Replace the placeholder sections above with actual project details.
+This file is used by SEO workflows and content generation agents.
+"""
+
+    def _get_seo_brief_template(self, website_id: str) -> str:
+        return f"""# {website_id} - SEO Content Brief
+
+## Project Overview
+
+**Site:** {website_id}  
+**Domain:** [your domain focus]  
+**Current Coverage:** [X published articles covering ...]
+
+## Content Clusters & Status
+
+### Cluster 1: [Topic Area] (STATUS)
+**Pillar Content:** [Main topic description]
+- Subtopic 1 ✅
+- Subtopic 2 ✅
+- Subtopic 3 🎯 (planned)
+
+### Cluster 2: [Topic Area] (STATUS)
+**Pillar Content:** [Main topic description]
+- Subtopic 1 ✅
+- Subtopic 2 🎯 (planned)
+
+## Target Keywords
+
+### High Priority
+- [keyword 1]
+- [keyword 2]
+
+### Medium Priority
+- [keyword 3]
+- [keyword 4]
+
+## Content Gaps
+
+- Gap 1: Description
+- Gap 2: Description
+
+## TODO: Fill in this template
+
+Update this brief as your content strategy evolves.
+"""
+
+    def _get_reddit_config_template(self, website_id: str) -> str:
+        return f"""# Reddit Config: {website_id}
+
+> **Generic reply standards:** See `_reply_guardrails.md` in the reddit/ directory
+
+## Product Information
+- **Product Name**: [Your Product Name]
+- **Description**: [Brief description]
+
+## Mention Stance
+**RECOMMENDED** - Include product name when it adds value naturally
+
+## Trigger Topics
+- Topic 1
+- Topic 2
+- Topic 3
+
+## Target Subreddits
+- r/example1
+- r/example2
+- r/example3
+
+## Query Keywords
+- "keyword 1"
+- "keyword 2"
+
+## TODO: Fill in this template
+
+Define your product details and target communities here.
+"""
+
     def _run_setup_gitignore(self) -> bool:
         """Update project .gitignore to exclude automation data.
 
@@ -367,6 +594,25 @@ class DashboardVerificationMixin:
             if not policy_path.exists():
                 checks.append(("?", "dim", "No orchestrator_policy.json found"))
 
+        # Check for template/config files (new projects have these, old ones may not)
+        missing_templates = []
+        template_files = [
+            (automation_dir / "brandvoice.md", "brandvoice.md"),
+            (automation_dir / "project_summary.md", "project_summary.md"),
+            (automation_dir / "seo_content_brief.md", "seo_content_brief.md"),
+            (automation_dir / "reddit_config.md", "reddit_config.md"),
+        ]
+        for path, name in template_files:
+            if not path.exists():
+                missing_templates.append((name, path))
+        
+        if missing_templates:
+            checks.append(("", "white", ""))  # Blank line separator
+            checks.append(("━", "dim", " Template Files "))
+            for name, path in missing_templates:
+                checks.append(("⚠", "yellow", f"Missing: {name}"))
+            checks.append((" ", "dim", "  Type 'repair' to create missing templates"))
+
         # Display results
         for icon, color, message in checks:
             console.print(f"[{color}]{icon} {message}[/{color}]")
@@ -479,5 +725,17 @@ class DashboardVerificationMixin:
                             console.print("[dim]  Project config updated.[/dim]")
                         else:
                             console.print(f"[red]✗ Failed to save: {msg}[/red]")
+
+        # Offer to repair missing templates
+        if missing_templates:
+            console.print(f"\n[cyan]Template repair available:[/cyan] Create {len(missing_templates)} missing template file(s)?")
+            confirm = self.session.prompt("Type 'repair' to create templates, or press Enter to skip: ")
+            if confirm.lower() == "repair":
+                created = self._repair_templates(automation_dir, p.website_id, missing_templates)
+                if created > 0:
+                    console.print(f"[green]✓ Created {created} template file(s)[/green]")
+                    console.print("[dim]  Edit these files to customize for your project.[/dim]")
+                else:
+                    console.print("[yellow]⚠ No templates were created[/yellow]")
 
         self.session.prompt("\nPress Enter...")

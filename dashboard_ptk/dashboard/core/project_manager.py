@@ -440,7 +440,7 @@ class ProjectManager:
         return True
     
     def _init_project_structure(self, repo_path: str, website_id: str) -> tuple[bool, str]:
-        """Initialize automation directory structure."""
+        """Initialize automation directory structure with templates."""
         try:
             repo = Path(repo_path)
             auto_dir = repo / ".github" / "automation"
@@ -449,6 +449,12 @@ class ProjectManager:
             # Create content directory
             content_dir = repo / "content"
             content_dir.mkdir(exist_ok=True)
+            
+            # Create subdirectories
+            (auto_dir / "artifacts").mkdir(exist_ok=True)
+            (auto_dir / "task_results").mkdir(exist_ok=True)
+            (auto_dir / "reddit").mkdir(exist_ok=True)
+            (auto_dir / "specs").mkdir(exist_ok=True)
             
             # Create manifest.json
             manifest = {
@@ -469,7 +475,264 @@ class ProjectManager:
                 json.dumps(articles, indent=2)
             )
             
-            return True, "Project structure initialized"
+            # Create template files
+            self._create_template_files(auto_dir, website_id)
+            
+            return True, "Project structure initialized with templates"
             
         except Exception as e:
             return False, str(e)
+    
+    def _create_template_files(self, auto_dir: Path, website_id: str) -> None:
+        """Create template files for the project."""
+        
+        # brandvoice.md
+        brandvoice_content = """# Brand Voice Guidelines
+
+## Tone
+- Professional but approachable
+- Clear and concise
+- Helpful and educational
+
+## Voice Characteristics
+- **Knowledgeable**: Demonstrate expertise in your domain
+- **Practical**: Focus on actionable insights
+- **Transparent**: Be honest about limitations and trade-offs
+- **Conversational**: Write like you're talking to a colleague
+
+## Language Style
+- Use industry terminology correctly
+- Avoid hype or promotional language
+- Keep sentences clear and concise
+- Use first person when sharing experience
+
+## What to Avoid
+- Overpromising results
+- Aggressive self-promotion
+- Jargon without context
+- Being dismissive of alternatives
+"""
+        (auto_dir / "brandvoice.md").write_text(brandvoice_content)
+        
+        # project_summary.md (generalized from days_to_expiry.md pattern)
+        project_summary_content = f"""# Project Summary: {website_id}
+
+## Platform Overview
+
+Brief description of what this project does and who it serves.
+
+---
+
+## Core Features
+
+### Feature 1: [Name]
+Description of the feature and its value proposition.
+
+**Search Keywords:**
+- "keyword 1"
+- "keyword 2"
+
+---
+
+### Feature 2: [Name]
+Description of the feature and its value proposition.
+
+---
+
+## Content Pillars for SEO
+
+### Pillar 1: [Topic Area]
+- Subtopic 1
+- Subtopic 2
+
+### Pillar 2: [Topic Area]
+- Subtopic 1
+- Subtopic 2
+
+---
+
+## Target Audience
+
+- **Primary audience**: Description
+- **Secondary audience**: Description
+
+---
+
+## Key Differentiators
+
+1. **Differentiator 1**: Description
+2. **Differentiator 2**: Description
+
+---
+
+## User Workflows
+
+### Workflow 1: [Name]
+1. Step 1
+2. Step 2
+3. Step 3
+
+---
+
+## Data & Integrations
+
+### Data Sources
+- Source 1
+- Source 2
+
+---
+
+## Target Communities (for Reddit)
+- r/example1
+- r/example2
+
+---
+
+## TODO: Fill in this template
+
+Replace the placeholder sections above with actual project details.
+This file is used by SEO workflows and content generation agents.
+"""
+        (auto_dir / "project_summary.md").write_text(project_summary_content)
+        
+        # seo_content_brief.md
+        seo_brief_content = f"""# {website_id} - SEO Content Brief
+
+## Project Overview
+
+**Site:** {website_id}  
+**Domain:** [your domain focus]  
+**Current Coverage:** [X published articles covering ...]
+
+## Content Clusters & Status
+
+### Cluster 1: [Topic Area] (STATUS)
+**Pillar Content:** [Main topic description]
+- Subtopic 1 ✅
+- Subtopic 2 ✅
+- Subtopic 3 🎯 (planned)
+
+### Cluster 2: [Topic Area] (STATUS)
+**Pillar Content:** [Main topic description]
+- Subtopic 1 ✅
+- Subtopic 2 🎯 (planned)
+
+## Target Keywords
+
+### High Priority
+- [keyword 1]
+- [keyword 2]
+
+### Medium Priority
+- [keyword 3]
+- [keyword 4]
+
+## Content Gaps
+
+- Gap 1: Description
+- Gap 2: Description
+
+## TODO: Fill in this template
+
+Update this brief as your content strategy evolves.
+"""
+        (auto_dir / "seo_content_brief.md").write_text(seo_brief_content)
+        
+        # reddit_config.md
+        reddit_config_content = f"""# Reddit Config: {website_id}
+
+> **Generic reply standards:** See `_reply_guardrails.md` in the reddit/ directory
+
+## Product Information
+- **Product Name**: [Your Product Name]
+- **Description**: [Brief description]
+
+## Mention Stance
+**RECOMMENDED** - Include product name when it adds value naturally
+
+## Trigger Topics
+- Topic 1
+- Topic 2
+- Topic 3
+
+## Target Subreddits
+- r/example1
+- r/example2
+- r/example3
+
+## Query Keywords
+- "keyword 1"
+- "keyword 2"
+
+## TODO: Fill in this template
+
+Define your product details and target communities here.
+"""
+        (auto_dir / "reddit_config.md").write_text(reddit_config_content)
+        
+        # reddit/_reply_guardrails.md
+        reply_guardrails_content = """# Reply Guardrails & Quality Checklist
+
+> Source of truth for all Reddit reply drafting.
+
+## The Critique Workflow (Mandatory)
+
+After drafting your reply, run this critique pass:
+
+> Act as an old copy editor who believes deeply in respecting reader's time.
+> Review your drafted reply and ask:
+> 1. Is every sentence earning its place?
+> 2. Can any words be cut without losing meaning?
+> 3. Is the tone conversational, not corporate?
+> 4. Does it sound like something you'd say to a friend?
+> 5. Does it respect the reader's intelligence and time?
+
+Then: Revise ruthlessly based on this critique.
+
+## Core Rules (Non-Negotiable)
+
+1. **No Links** – No `http://`, `https://`, or `[text](url)`
+2. **No Markdown Formatting** – Plain text only
+3. **Non-Promotional Tone** – Lead with education, not product features
+4. **3–5 Sentences** – No longer
+5. **Mention Product by Name (if relevant)** – Use simple, casual language
+
+## The Formula
+
+[Acknowledge] → [Educate] → [Tool (optional)] → [Engage]
+
+## Quality Checklist
+
+- [ ] Length: Exactly 3-5 sentences
+- [ ] No Links: Zero URLs
+- [ ] Tone: Sounds like advice from a knowledgeable friend
+- [ ] Product Mention: Per project config stance
+- [ ] Engaging Question: Ends with genuine question
+- [ ] Specific Examples: Contains numbers or concrete details
+
+## Product Mention Rules
+
+- **REQUIRED**: Reply MUST contain exact product name
+- **RECOMMENDED**: Include when natural
+- **OPTIONAL**: Mention only if adds value
+- **OMIT**: Do not mention product
+
+## Forbidden Phrases
+
+- ❌ "a dedicated tool" → Use exact product name
+- ❌ "a platform" → Use exact product name
+- ❌ "the app" → Use exact product name
+- ❌ "a tracker" → Use exact product name
+"""
+        (auto_dir / "reddit" / "_reply_guardrails.md").write_text(reply_guardrails_content)
+        
+        # orchestrator_policy.json (minimal default)
+        orchestrator_policy = {
+            "version": "1.0",
+            "website_id": website_id,
+            "rules": [],
+            "schedules": []
+        }
+        (auto_dir / "orchestrator_policy.json").write_text(
+            json.dumps(orchestrator_policy, indent=2)
+        )

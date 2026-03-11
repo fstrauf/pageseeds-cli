@@ -94,11 +94,18 @@ class PerformanceRunner(TaskRunner):
     def _load_manifest(self) -> dict:
         """Load project manifest."""
         repo_root = Path(self.project.repo_root)
+        website_id = getattr(self.project, 'website_id', '') or getattr(self.project, 'site_id', '')
+        
         manifest_candidates = [
             repo_root / ".github" / "automation" / "manifest.json",
             repo_root / "automation" / "manifest.json",
             repo_root / "manifest.json",
         ]
+        
+        # Also check general/<website_id>/manifest.json
+        if website_id:
+            manifest_candidates.insert(0, repo_root / "general" / website_id / "manifest.json")
+        
         for candidate in manifest_candidates:
             if candidate.exists():
                 try:
@@ -138,7 +145,6 @@ class PerformanceRunner(TaskRunner):
         cmd = [
             "seo", "gsc-site-scan",
             "--repo-root", str(repo_root),
-            "--site", site_url,
             "--out-dir", str(out_dir),
             "--top-pages", "10",
             "--decliners", "10",
@@ -148,22 +154,22 @@ class PerformanceRunner(TaskRunner):
             "--queries-limit", "10",
         ]
         
-        # Note: We intentionally DON'T pass --service-account-path here.
-        # The gsc_site_scan.py script has its own resolve_service_account_path() 
-        # function that properly validates service account JSON format.
-        # Our _get_service_account_path() might return application_default_credentials.json
-        # which is NOT a valid service account file (it's a user credential).
-        # The script will find the correct service account via:
-        #   1. GOOGLE_APPLICATION_CREDENTIALS env var (if valid service account)
-        #   2. ~/.config/automation/secrets.env (GSC_SERVICE_ACCOUNT_PATH)
-        #   3. Repo-embedded *.json files
-        
-        # Add manifest if available (helps with site auto-detection)
+        # Add manifest for site auto-detection
+        # The CLI will read the manifest and auto-select the correct GSC property
+        website_id = getattr(self.project, 'website_id', '') or getattr(self.project, 'site_id', '')
         manifest_path = repo_root / ".github" / "automation" / "manifest.json"
         if not manifest_path.exists():
+            manifest_path = repo_root / "automation" / "manifest.json"
+        if not manifest_path.exists() and website_id:
+            manifest_path = repo_root / "general" / website_id / "manifest.json"
+        if not manifest_path.exists():
             manifest_path = repo_root / "manifest.json"
+        
         if manifest_path.exists():
             cmd.extend(["--manifest", str(manifest_path)])
+        else:
+            # Fallback: pass site directly if no manifest
+            cmd.extend(["--site", site_url])
         
         console.print("[dim]Running GSC site scan (this may take 3-5 minutes)...[/dim]")
         console.print("[dim]Service account: Will be auto-detected by CLI[/dim]\n")
@@ -218,19 +224,16 @@ class PerformanceRunner(TaskRunner):
         
         for page in pages:
             url = page.get("url", "")
-            selection_reason = page.get("selection_reason", "")
             
-            # Get current metrics from short window
-            short_window = page.get("short_window", {})
-            current = short_window.get("current", {})
-            position = current.get("position", 0)
-            impressions = current.get("impressions", 0)
-            clicks = current.get("clicks", 0)
-            ctr = current.get("ctr", 0)
+            # Support both old format (short_window.current) and new format (metrics)
+            metrics = page.get("metrics", {})
+            position = metrics.get("position", 0)
+            impressions = metrics.get("impressions", 0)
+            clicks = metrics.get("clicks", 0)
+            ctr = metrics.get("ctr", 0)
             
-            # Get delta
-            delta = short_window.get("delta", {})
-            impression_delta = delta.get("impressions", 0)
+            # For delta, we'll use 0 for now (new format doesn't have historical comparison yet)
+            impression_delta = 0
             
             page_summary = {
                 "url": url,
@@ -239,17 +242,19 @@ class PerformanceRunner(TaskRunner):
                 "clicks": clicks,
                 "ctr": ctr,
                 "impression_delta": impression_delta,
-                "queries": page.get("queries_snapshot", {}),
+                "queries": page.get("queries", []),
                 "inspection": page.get("inspection", {}),
             }
             
-            if selection_reason == "impression_decliner":
-                decliners.append(page_summary)
-            elif 1 <= position <= 3:
+            # Categorize by position (no selection_reason in new format)
+            if 1 <= position <= 3:
                 stable_top.append(page_summary)
             elif 3 < position <= 15:
                 quick_wins.append(page_summary)
+            elif position > 15:
+                needs_work.append(page_summary)
             else:
+                # Position 0 or unknown - include in needs_work
                 needs_work.append(page_summary)
         
         # Sort by opportunity

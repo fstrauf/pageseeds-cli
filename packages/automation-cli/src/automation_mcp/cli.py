@@ -27,6 +27,12 @@ from .campaign import (
     transition_item,
 )
 from . import version_check
+from .cli_gsc import (
+    cmd_gsc_list_sites,
+    cmd_gsc_indexing_report,
+    cmd_gsc_site_scan,
+    cmd_gsc_page_context,
+)
 
 
 def _print_json(data: object) -> None:
@@ -684,263 +690,41 @@ def _posthog_view(args: argparse.Namespace) -> None:
 
 def _seo_gsc_indexing_report(args: argparse.Namespace) -> None:
     """
-    Run the GSC URL Inspection indexing report using the centralized tool code
-    from the automation repo (no vendoring into target repos).
+    Run the GSC URL Inspection indexing report.
+    Uses internal GSC module (no external scripts).
     """
-    payload_root = _payload_root_from_cli()
-    if payload_root is None:
-        raise SystemExit("Cannot auto-detect automation repo root for GSC tooling.")
-
-    script_path = (payload_root / "tools" / "seo_help" / "gsc_indexing_report.py").resolve()
-    req_path = (payload_root / "tools" / "seo_help" / "requirements.txt").resolve()
-    if not script_path.exists():
-        raise SystemExit(f"Missing script: {script_path}")
-    if not req_path.exists():
-        raise SystemExit(f"Missing requirements: {req_path}")
-
-    repo_root = Path(args.repo_root).expanduser().resolve() if args.repo_root else Path.cwd().resolve()
-    workspace_dir = (repo_root / str(args.workspace_dir)).resolve()
-    out_dir = Path(args.out_dir).expanduser() if getattr(args, "out_dir", "") else (repo_root / ".github" / "automation" / "output" / "gsc_indexing")
-    out_dir = out_dir if out_dir.is_absolute() else (repo_root / out_dir).resolve()
-
-    cmd: list[str] = [
-        "uv",
-        "run",
-        "--with-requirements",
-        str(req_path),
-        "python",
-        str(script_path),
-        "--out-dir",
-        str(out_dir),
-        "--limit",
-        str(int(args.limit)),
-        "--workers",
-        str(int(args.workers)),
-        "--samples-per-bucket",
-        str(int(args.samples_per_bucket)),
-    ]
-
-    if args.language:
-        cmd.extend(["--language", str(args.language)])
-    if args.manifest:
-        cmd.extend(["--manifest", str(args.manifest)])
-    if args.site:
-        cmd.extend(["--site", str(args.site)])
-    if args.sitemap_url:
-        cmd.extend(["--sitemap-url", str(args.sitemap_url)])
-    if args.urls_file:
-        cmd.extend(["--urls-file", str(args.urls_file)])
-    if args.service_account_path:
-        cmd.extend(["--service-account-path", str(args.service_account_path)])
-    if args.delegated_user:
-        cmd.extend(["--delegated-user", str(args.delegated_user)])
-    if args.oauth_client_secrets:
-        cmd.extend(["--oauth-client-secrets", str(args.oauth_client_secrets)])
-    if bool(args.list_sites):
-        cmd.append("--list-sites")
-    if bool(args.include_raw):
-        cmd.append("--include-raw")
-
-    proc = subprocess.run(cmd, cwd=str(repo_root), check=False)
-    raise SystemExit(proc.returncode)
+    exit_code = cmd_gsc_indexing_report(args)
+    raise SystemExit(exit_code)
 
 
 def _seo_gsc_page_context(args: argparse.Namespace) -> None:
     """
     Run single-page GSC context pull (performance + inspection + site context).
+    Uses internal GSC module (no external scripts).
     """
-    payload_root = _payload_root_from_cli()
-    if payload_root is None:
-        raise SystemExit("Cannot auto-detect automation repo root for GSC tooling.")
-
-    script_path = (payload_root / "tools" / "seo_help" / "gsc_page_context.py").resolve()
-    req_path = (payload_root / "tools" / "seo_help" / "requirements.txt").resolve()
-    if not script_path.exists():
-        raise SystemExit(f"Missing script: {script_path}")
-    if not req_path.exists():
-        raise SystemExit(f"Missing requirements: {req_path}")
-
-    repo_root = Path(args.repo_root).expanduser().resolve() if args.repo_root else Path.cwd().resolve()
-    workspace_dir = (repo_root / str(args.workspace_dir)).resolve()
-    out_dir = Path(args.out_dir).expanduser() if getattr(args, "out_dir", "") else (repo_root / ".github" / "automation" / "output" / "gsc_page_context")
-    out_dir = out_dir if out_dir.is_absolute() else (repo_root / out_dir).resolve()
-
-    cmd: list[str] = [
-        "uv",
-        "run",
-        "--with-requirements",
-        str(req_path),
-        "python",
-        str(script_path),
-        "--url",
-        str(args.url),
-        "--compare-days",
-        str(int(args.compare_days)),
-        "--long-compare-days",
-        str(int(args.long_compare_days)),
-        "--queries-limit",
-        str(int(args.queries_limit)),
-        "--queries-fetch-limit",
-        str(int(args.queries_fetch_limit)),
-        "--language",
-        str(args.language),
-        "--repo-root",
-        str(repo_root),
-        "--out-dir",
-        str(out_dir),
-    ]
-
-    if args.manifest:
-        cmd.extend(["--manifest", str(args.manifest)])
-    if args.site:
-        cmd.extend(["--site", str(args.site)])
-    if args.service_account_path:
-        cmd.extend(["--service-account-path", str(args.service_account_path)])
-    if args.delegated_user:
-        cmd.extend(["--delegated-user", str(args.delegated_user)])
-    if args.oauth_client_secrets:
-        cmd.extend(["--oauth-client-secrets", str(args.oauth_client_secrets)])
-    if args.action_queue:
-        cmd.extend(["--action-queue", str(args.action_queue)])
-
-    proc = subprocess.run(cmd, cwd=str(repo_root), check=False)
-    raise SystemExit(proc.returncode)
+    exit_code = cmd_gsc_page_context(args)
+    raise SystemExit(exit_code)
 
 
 def _seo_gsc_site_scan(args: argparse.Namespace) -> None:
     """
     Run multi-page GSC site scan (candidate selection + per-page context).
+    Uses internal GSC module (no external scripts).
     """
-    payload_root = _payload_root_from_cli()
-    if payload_root is None:
-        raise SystemExit("Cannot auto-detect automation repo root for GSC tooling.")
-
-    script_path = (payload_root / "tools" / "seo_help" / "gsc_site_scan.py").resolve()
-    req_path = (payload_root / "tools" / "seo_help" / "requirements.txt").resolve()
-    if not script_path.exists():
-        raise SystemExit(f"Missing script: {script_path}")
-    if not req_path.exists():
-        raise SystemExit(f"Missing requirements: {req_path}")
-
-    repo_root = Path(args.repo_root).expanduser().resolve() if args.repo_root else Path.cwd().resolve()
-    workspace_dir = (repo_root / str(args.workspace_dir)).resolve()
-    out_dir = Path(args.out_dir).expanduser() if getattr(args, "out_dir", "") else (repo_root / ".github" / "automation" / "output" / "gsc_site_scan")
-    out_dir = out_dir if out_dir.is_absolute() else (repo_root / out_dir).resolve()
-
-    cmd: list[str] = [
-        "uv",
-        "run",
-        "--with-requirements",
-        str(req_path),
-        "python",
-        str(script_path),
-        "--repo-root",
-        str(repo_root),
-        "--out-dir",
-        str(out_dir),
-        "--compare-days",
-        str(int(args.compare_days)),
-        "--long-compare-days",
-        str(int(args.long_compare_days)),
-        "--top-pages",
-        str(int(args.top_pages)),
-        "--decliners",
-        str(int(args.decliners)),
-        "--max-pages",
-        str(int(args.max_pages)),
-        "--fetch-pages-limit",
-        str(int(args.fetch_pages_limit)),
-        "--non-pass-pool",
-        str(int(args.non_pass_pool)),
-        "--queries-limit",
-        str(int(args.queries_limit)),
-        "--queries-fetch-limit",
-        str(int(args.queries_fetch_limit)),
-        "--language",
-        str(args.language),
-    ]
-
-    if args.manifest:
-        cmd.extend(["--manifest", str(args.manifest)])
-    if args.site:
-        cmd.extend(["--site", str(args.site)])
-    if args.service_account_path:
-        cmd.extend(["--service-account-path", str(args.service_account_path)])
-    if args.delegated_user:
-        cmd.extend(["--delegated-user", str(args.delegated_user)])
-    if args.oauth_client_secrets:
-        cmd.extend(["--oauth-client-secrets", str(args.oauth_client_secrets)])
-    if args.action_queue:
-        cmd.extend(["--action-queue", str(args.action_queue)])
-
-    proc = subprocess.run(cmd, cwd=str(repo_root), check=False)
-    raise SystemExit(proc.returncode)
+    exit_code = cmd_gsc_site_scan(args)
+    raise SystemExit(exit_code)
 
 
 def _seo_gsc_watch(args: argparse.Namespace) -> None:
     """
     Run ongoing GSC watch feed (alerts + opportunities + drift).
+    Uses internal GSC module (no external scripts).
     """
-    payload_root = _payload_root_from_cli()
-    if payload_root is None:
-        raise SystemExit("Cannot auto-detect automation repo root for GSC tooling.")
-
-    script_path = (payload_root / "tools" / "seo_help" / "gsc_watch.py").resolve()
-    req_path = (payload_root / "tools" / "seo_help" / "requirements.txt").resolve()
-    if not script_path.exists():
-        raise SystemExit(f"Missing script: {script_path}")
-    if not req_path.exists():
-        raise SystemExit(f"Missing requirements: {req_path}")
-
-    repo_root = Path(args.repo_root).expanduser().resolve() if args.repo_root else Path.cwd().resolve()
-    workspace_dir = (repo_root / str(args.workspace_dir)).resolve()
-    out_dir = Path(args.out_dir).expanduser() if getattr(args, "out_dir", "") else (repo_root / ".github" / "automation" / "output" / "gsc_watch")
-    out_dir = out_dir if out_dir.is_absolute() else (repo_root / out_dir).resolve()
-
-    cmd: list[str] = [
-        "uv",
-        "run",
-        "--with-requirements",
-        str(req_path),
-        "python",
-        str(script_path),
-        "--repo-root",
-        str(repo_root),
-        "--out-dir",
-        str(out_dir),
-        "--compare-days",
-        str(int(args.compare_days)),
-        "--long-compare-days",
-        str(int(args.long_compare_days)),
-        "--fetch-pages-limit",
-        str(int(args.fetch_pages_limit)),
-        "--alerts-limit",
-        str(int(args.alerts_limit)),
-        "--opps-limit",
-        str(int(args.opps_limit)),
-        "--inspect-top-drops",
-        str(int(args.inspect_top_drops)),
-        "--drift-limit",
-        str(int(args.drift_limit)),
-        "--language",
-        str(args.language),
-    ]
-
-    if args.manifest:
-        cmd.extend(["--manifest", str(args.manifest)])
-    if args.site:
-        cmd.extend(["--site", str(args.site)])
-    if args.service_account_path:
-        cmd.extend(["--service-account-path", str(args.service_account_path)])
-    if args.delegated_user:
-        cmd.extend(["--delegated-user", str(args.delegated_user)])
-    if args.oauth_client_secrets:
-        cmd.extend(["--oauth-client-secrets", str(args.oauth_client_secrets)])
-    if args.action_queue:
-        cmd.extend(["--action-queue", str(args.action_queue)])
-
-    proc = subprocess.run(cmd, cwd=str(repo_root), check=False)
-    raise SystemExit(proc.returncode)
+    # For now, delegate to site_scan with watch-specific parameters
+    # TODO: Implement full watch functionality in cli_gsc module
+    print("GSC Watch: Using site scan as base (watch features to be implemented)", file=sys.stderr)
+    exit_code = cmd_gsc_site_scan(args)
+    raise SystemExit(exit_code)
 
 
 def _resolve_action_queue_path(args: argparse.Namespace) -> Path:

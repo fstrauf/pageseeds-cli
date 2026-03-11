@@ -45,15 +45,37 @@ class EnvResolver:
         base_env: Mapping[str, str] | None = None,
         overrides: Mapping[str, str] | None = None,
     ) -> dict[str, str]:
-        """Build subprocess environment using consistent source precedence."""
+        """Build subprocess environment using consistent source precedence.
+        
+        Precedence (highest to lowest):
+        1. Explicit overrides parameter
+        2. Environment files (secrets.env, .env.local, .env)
+        3. Shell/process environment variables
+        
+        This ensures machine-local secrets.env is the source of truth,
+        while still allowing shell overrides when needed.
+        """
         env = dict(base_env) if base_env is not None else os.environ.copy()
 
         # Prevent subprocesses from inheriting dashboard venv context accidentally.
         env.pop("VIRTUAL_ENV", None)
 
+        # Ensure Python user bin directory is in PATH for CLI tools
+        python_user_bin = str(Path.home() / "Library/Python/3.11/bin")
+        if python_user_bin not in env.get("PATH", ""):
+            env["PATH"] = f"{python_user_bin}:{env.get('PATH', '')}"
+        
+        # Collect file values (highest priority file wins for each key)
+        file_values: dict[str, str] = {}
         for env_file in self.env_files():
             for key, value in self._read_env_file(env_file).items():
-                env.setdefault(key, value)
+                # First file with this key wins (highest priority)
+                if key not in file_values:
+                    file_values[key] = value
+
+        # Apply file values - these OVERRIDE shell environment variables
+        # This makes secrets.env the authoritative source for credentials
+        env.update(file_values)
 
         if overrides:
             env.update({str(k): str(v) for k, v in overrides.items()})
