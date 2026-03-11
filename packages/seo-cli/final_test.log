@@ -1,0 +1,28 @@
+================================================================================
+Testing Updated MCP Server (curl-based)
+================================================================================
+
+1. Testing get_capsolver_token...
+   Result: ✓ SUCCESS (8.2s)
+   Token: 0.DsExVnJMvmOBDLVVhpCXY7qhnxNE6D18pbeUWrrJlhd37Y5X...
+
+2. Testing single keyword difficulty...
+   Result: ✓ SUCCESS (1.6s)
+   Difficulty: 3
+
+3. Testing manual batch processing (3 keywords)...
+   [1/3] options wheel strategy... ✓ (KD 4)
+   [2/3] portfolio tracking... ✓ (KD 43)
+   [3/3] covered calls... ✓ (KD 24)
+
+   Total time: 28.3s
+   Successful: 3/3
+   Failed: 0
+
+   Successful results:
+     - options wheel strategy: KD 4
+     - portfolio tracking: KD 43
+     - covered calls: KD 24
+
+================================================================================
+✓ All tests complete!

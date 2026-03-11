@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+**/.venv/
+
+# Local env/config
+.env
+.env.*
+!.env.example
+
+# Runtime artifacts and state
+output/
+**/output/
+.github/automation/
+**/.github/automation/
+
+# Local machine/project config
+WEBSITES_REGISTRY.json
+.github/prompts/projects.json
+
+# OS files
+.DS_Store

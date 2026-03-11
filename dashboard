@@ -1,0 +1,6 @@
+#!/bin/bash
+# Campaign Dashboard Launcher
+# This script launches the python-prompt-toolkit dashboard
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$SCRIPT_DIR/dashboard_ptk/run.sh" "$@"

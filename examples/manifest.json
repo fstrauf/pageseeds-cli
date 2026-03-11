@@ -1,0 +1,7 @@
+{
+  "website": "my-site-id",
+  "url": "https://example.com",
+  "gsc_site": "sc-domain:example.com",
+  "sitemap": "https://example.com/sitemap.xml",
+  "description": "Example website for SEO automation"
+}

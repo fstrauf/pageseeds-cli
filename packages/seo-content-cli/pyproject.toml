@@ -1,0 +1,34 @@
+[project]
+name = "seo-content-mcp"
+version = "0.1.0"
+description = "A Model Context Protocol (MCP) server for managing SEO content lifecycle - article sync, date distribution, and content quality checks."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "PageSeeds Contributors", email = "pageseeds@example.com" },
+]
+keywords = ["seo", "content", "mcp", "articles"]
+license = { text = "MIT" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "mcp~=1.6.0",
+    "pydantic~=2.10.0",
+    "pyyaml~=6.0.0",
+]
+
+[project.scripts]
+seo-content-mcp = "seo_content_mcp:main"
+seo-content-cli = "seo_content_mcp.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = []

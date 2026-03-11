@@ -1,0 +1,830 @@
+"""
+Article management utilities
+"""
+import json
+import re
+from datetime import datetime
+from pathlib import Path
+from typing import Optional
+
+from rich.console import Console
+
+from ..config import get_repo_root
+
+console = Console()
+
+
+def generate_url_slug(filename: str) -> str:
+    """Generate url_slug from filename.
+    
+    This is the SINGLE SOURCE OF TRUTH for slug generation.
+    Convention:
+    - Filename format: {id:03d}_{slug}.mdx (e.g., "104_spy_vs_spx.mdx")
+    - URL slug format: {slug} (e.g., "spy_vs_spx")
+    
+    Strips numeric ID prefix. Keeps underscores (standard convention).
+    
+    Args:
+        filename: The filename (e.g., "104_spy_vs_spx.mdx" or "./content/104_spy_vs_spx.mdx")
+        
+    Returns:
+        The url_slug (e.g., "spy_vs_spx")
+    """
+    # Get just the basename
+    basename = Path(filename).name
+    # Remove extension
+    basename = basename.replace(".mdx", "").replace(".md", "")
+    # Strip numeric prefix (e.g., "104_") - keeps underscores
+    slug = re.sub(r'^\d+_', '', basename)
+    return slug
+
+
+class ArticleManager:
+    """Manages article metadata and content directories."""
+    
+    def __init__(self, website_id: str):
+        self.website_id = website_id
+    
+    def get_content_dir(self, repo_root: Path | None = None) -> Path | None:
+        """Get the content directory for a website.
+        
+        In single-tenant mode, looks for content in common locations:
+        - {repo_root}/src/blog/posts (preferred - real folder)
+        - {repo_root}/src/content
+        - {repo_root}/content (symlink - legacy)
+        
+        Also checks relative to the articles.json location.
+        """
+        root = repo_root or get_repo_root()
+        
+        # Preferred: real folder locations (no symlink)
+        candidates = [
+            root / "src" / "blog" / "posts",  # Preferred: real folder
+            root / "src" / "content",
+            root / "content",  # Legacy: may be symlink
+            root / "posts",
+            root / "blog",
+        ]
+        
+        for candidate in candidates:
+            if candidate.exists() and candidate.is_dir():
+                # Verify it has markdown files
+                md_files = list(candidate.glob("*.md*"))
+                if md_files:
+                    return candidate
+        
+        # Fallback: check relative to articles.json parent
+        articles_json = self.get_articles_json_path(root)
+        if articles_json:
+            # Check common locations relative to articles.json
+            for rel_path in ["../src/blog/posts", "../src/content", "../content"]:
+                content_dir = articles_json.parent / rel_path
+                if content_dir.exists() and content_dir.is_dir():
+                    md_files = list(content_dir.glob("*.md*"))
+                    if md_files:
+                        return content_dir
+        
+        return None
+    
+    def get_articles_json_path(self, repo_root: Path | None = None) -> Path | None:
+        """Get the path to articles.json for a website.
+        
+        Each website repo has its own .github/automation/ folder with just that site's data.
+        """
+        root = repo_root or get_repo_root()
+        automation_dir = root / ".github" / "automation"
+        
+        # Primary location: .github/automation/articles.json
+        articles_json = automation_dir / "articles.json"
+        if articles_json.exists():
+            return articles_json
+        
+        # Legacy fallback: automation/manifest.json or root-level automation/
+        legacy_paths = [
+            root / "automation" / "articles.json",
+            root / "automation" / "manifest.json",
+        ]
+        for path in legacy_paths:
+            if path.exists():
+                return path
+                
+        return None
+    
+    def get_next_id(self, repo_root: Path | None = None) -> int:
+        """Get the next sequential article ID from articles.json."""
+        articles_json = self.get_articles_json_path(repo_root)
+        if not articles_json:
+            return 1
+        
+        try:
+            data = json.loads(articles_json.read_text())
+            articles = data.get("articles", [])
+            if articles:
+                max_id = max(a.get("id", 0) for a in articles)
+                return max_id + 1
+        except Exception:
+            pass
+        return 1
+    
+    def get_latest_date(self, repo_root: Path | None = None, include_drafts: bool = False) -> tuple[datetime | None, list[dict]]:
+        """Get the most recent article date and list of recent articles.
+        
+        Args:
+            repo_root: Path to repository root
+            include_drafts: If True, includes draft articles in the search
+                          (useful for scheduling new content)
+        """
+        articles_json = self.get_articles_json_path(repo_root)
+        if not articles_json:
+            return None, []
+        
+        try:
+            data = json.loads(articles_json.read_text())
+            articles = data.get("articles", [])
+            
+            dated_articles = []
+            for article in articles:
+                # Filter by status
+                status = article.get("status")
+                if status not in ["published", "draft"]:
+                    continue
+                if status == "draft" and not include_drafts:
+                    continue
+                    
+                date_str = article.get("published_date")
+                if date_str:
+                    try:
+                        dt = datetime.strptime(date_str, "%Y-%m-%d")
+                        dated_articles.append({**article, "_parsed_date": dt})
+                    except:
+                        pass
+            
+            if dated_articles:
+                dated_articles.sort(key=lambda x: x["_parsed_date"], reverse=True)
+                return dated_articles[0]["_parsed_date"], dated_articles[:5]
+        except Exception:
+            pass
+        
+        return None, []
+    
+    def get_next_available_date(self, repo_root: Path | None = None) -> datetime:
+        """Get the next available date for scheduling a new article.
+        
+        Finds the latest date among ALL articles (published and drafts),
+        then finds the next available slot (2-day gaps) that is NOT already taken.
+        
+        This prevents duplicate dates by checking all existing article dates.
+        """
+        from datetime import timedelta
+        
+        today = datetime.now()
+        articles_json = self.get_articles_json_path(repo_root)
+        
+        if not articles_json:
+            return today
+        
+        try:
+            data = json.loads(articles_json.read_text())
+            articles = data.get("articles", [])
+            
+            # Get all existing dates (published and drafts)
+            existing_dates = set()
+            latest_date = None
+            
+            for article in articles:
+                status = article.get("status")
+                if status not in ["published", "draft"]:
+                    continue
+                    
+                date_str = article.get("published_date")
+                if date_str:
+                    try:
+                        dt = datetime.strptime(date_str, "%Y-%m-%d")
+                        existing_dates.add(dt.date())
+                        if latest_date is None or dt > latest_date:
+                            latest_date = dt
+                    except:
+                        pass
+            
+            if not latest_date:
+                return today
+            
+            # Start from latest date + 2 days
+            candidate_date = latest_date + timedelta(days=2)
+            
+            # Keep incrementing by 2 days until we find a free slot
+            # Also ensure we don't go too far into the future
+            max_attempts = 50  # Prevent infinite loop
+            attempts = 0
+            
+            while attempts < max_attempts:
+                # Check if this date is available
+                if candidate_date.date() not in existing_dates:
+                    # Found an available date
+                    return candidate_date
+                
+                # Date is taken, try next slot (+2 days)
+                candidate_date = candidate_date + timedelta(days=2)
+                attempts += 1
+            
+            # If we couldn't find a slot after latest date, try to find a gap in the past
+            gap_date = self._find_gap_in_past(repo_root, latest_date, existing_dates)
+            if gap_date:
+                return gap_date
+                
+        except Exception as e:
+            console.print(f"[dim]Error finding next available date: {e}[/dim]")
+        
+        return today
+    
+    def _find_gap_in_past(self, repo_root: Path | None = None, latest_date: datetime | None = None,
+                          existing_dates: set | None = None) -> datetime | None:
+        """Find a gap between existing articles where we can insert a new one.
+        
+        Looks for the most recent gap (closest to today) that has at least 2 days of space.
+        This prevents scheduling articles in the future by filling historical gaps.
+        
+        Args:
+            repo_root: Path to repository root
+            latest_date: The most recent article date (optional)
+            existing_dates: Set of existing date objects (optional, to avoid re-fetching)
+            
+        Returns:
+            datetime for the insertion point, or None if no gap found
+        """
+        from datetime import timedelta
+        
+        today = datetime.now()
+        
+        # If existing_dates not provided, fetch them
+        if existing_dates is None:
+            articles_json = self.get_articles_json_path(repo_root)
+            if not articles_json:
+                return None
+            
+            try:
+                data = json.loads(articles_json.read_text())
+                articles = data.get("articles", [])
+                
+                existing_dates = set()
+                for article in articles:
+                    status = article.get("status")
+                    if status not in ["published", "draft"]:
+                        continue
+                    date_str = article.get("published_date")
+                    if date_str:
+                        try:
+                            dt = datetime.strptime(date_str, "%Y-%m-%d")
+                            existing_dates.add(dt.date())
+                        except:
+                            pass
+            except Exception:
+                return None
+        
+        if not existing_dates:
+            return None
+        
+        try:
+            # Convert to sorted list of dates
+            sorted_dates = sorted(existing_dates)
+            # Look for gaps between existing dates
+            # Iterate backwards (most recent first) to find the most recent gap
+            for i in range(len(sorted_dates) - 1, 0, -1):
+                curr_date = sorted_dates[i]
+                prev_date = sorted_dates[i - 1]
+                
+                # Only consider gaps before today
+                if curr_date >= today.date():
+                    continue
+                
+                # Check if there's a gap of at least 4 days (room for +2 day spacing)
+                gap_days = (curr_date - prev_date).days
+                if gap_days >= 4:  # At least 4 days = 2 days gap + room for new article
+                    # Insert 2 days after the earlier article
+                    insert_date = datetime.combine(prev_date, datetime.min.time()) + timedelta(days=2)
+                    # Make sure insert_date is before the later article and not in future
+                    if insert_date.date() < curr_date and insert_date.date() <= today.date():
+                        # Verify this date isn't somehow in our set (shouldn't happen but safety check)
+                        if insert_date.date() not in existing_dates:
+                            console.print(f"[dim]  Filling gap: {insert_date.date()} (between {prev_date} and {curr_date})[/dim]")
+                            return insert_date
+            
+            # If no gaps found, check if we can place before the first article
+            first_date = sorted_dates[0]
+            if first_date > today.date():
+                return today
+            
+            # Last resort: find any space before today
+            if latest_date and latest_date.date() < today.date():
+                next_slot = latest_date + timedelta(days=2)
+                # Keep incrementing until we find a free slot
+                max_attempts = 30
+                attempts = 0
+                while next_slot.date() <= today.date() and attempts < max_attempts:
+                    if next_slot.date() not in existing_dates:
+                        return next_slot
+                    next_slot = next_slot + timedelta(days=2)
+                    attempts += 1
+            
+        except Exception as e:
+            console.print(f"[dim]Error finding gap: {e}[/dim]")
+        
+        return None
+    
+    def find_existing(self, search_title: str, repo_root: Path | None = None) -> dict | None:
+        """Find an existing article by title (for optimization tasks)."""
+        articles_json = self.get_articles_json_path(repo_root)
+        if not articles_json:
+            return None
+        
+        try:
+            data = json.loads(articles_json.read_text())
+            articles = data.get("articles", [])
+            
+            # Clean up search title
+            search_clean = search_title
+            if search_clean.lower().startswith("optimize:"):
+                search_clean = search_clean.split(":", 1)[1].strip()
+            
+            search_lower = search_clean.lower()
+            search_words = set(search_lower.split())
+            
+            best_match = None
+            best_score = 0
+            
+            for article in articles:
+                title = article.get("title", "").lower()
+                url_slug = article.get("url_slug", "").lower()
+                
+                score = 0
+                if search_lower in title or title in search_lower:
+                    score += 100
+                
+                title_words = set(title.split())
+                overlap = len(search_words & title_words)
+                score += overlap * 10
+                
+                if search_lower in url_slug or url_slug in search_lower:
+                    score += 50
+                
+                if score > best_score and score >= 20:
+                    best_score = score
+                    best_match = article
+            
+            return best_match
+            
+        except Exception as e:
+            console.print(f"[dim]Error searching articles: {e}[/dim]")
+            return None
+    
+    def add_article(self, article_id: int, title: str, filename: str, 
+                    publish_date: str, word_count: int, target_keyword: str = "",
+                    repo_root: Path | None = None) -> bool:
+        """Add new article entry to articles.json."""
+        try:
+            articles_json = self.get_articles_json_path(repo_root)
+            if not articles_json:
+                console.print(f"[yellow]⚠ Could not find articles.json for {self.website_id}[/yellow]")
+                return False
+            
+            data = json.loads(articles_json.read_text())
+            articles = data.get("articles", [])
+            
+            # Create slug from filename using centralized function
+            slug = generate_url_slug(filename)
+            
+            new_article = {
+                "id": article_id,
+                "title": title,
+                "url_slug": slug,
+                "file": f"./content/{filename}",
+                "target_keyword": target_keyword or slug.replace("-", " "),
+                "keyword_difficulty": "",
+                "target_volume": 0,
+                "published_date": publish_date,
+                "word_count": word_count,
+                "status": "draft",
+                "content_gaps_addressed": [],
+                "estimated_traffic_monthly": ""
+            }
+            
+            articles.append(new_article)
+            data["articles"] = articles
+            
+            if "statistics" in data:
+                data["statistics"]["total_articles"] = len(articles)
+                data["statistics"]["last_updated"] = datetime.now().strftime("%Y-%m-%d")
+            
+            articles_json.write_text(json.dumps(data, indent=2))
+            console.print(f"[green]✓ Updated articles.json (ID: {article_id})[/green]")
+            return True
+            
+        except Exception as e:
+            console.print(f"[yellow]⚠ Could not update articles.json: {e}[/yellow]")
+            return False
+    
+    def update_word_count(self, article_id: int, word_count: int, repo_root: Path | None = None) -> bool:
+        """Update word count for an existing article."""
+        try:
+            articles_json = self.get_articles_json_path(repo_root)
+            if not articles_json:
+                return False
+            
+            data = json.loads(articles_json.read_text())
+            articles = data.get("articles", [])
+            
+            for article in articles:
+                if article.get("id") == article_id:
+                    article["word_count"] = word_count
+                    article["last_optimized"] = datetime.now().strftime("%Y-%m-%d")
+                    break
+            else:
+                return False
+            
+            data["articles"] = articles
+            
+            if "statistics" in data:
+                data["statistics"]["last_updated"] = datetime.now().strftime("%Y-%m-%d")
+            
+            articles_json.write_text(json.dumps(data, indent=2))
+            console.print(f"[green]✓ Updated articles.json (word count: {word_count})[/green]")
+            return True
+            
+        except Exception as e:
+            console.print(f"[yellow]⚠ Could not update articles.json: {e}[/yellow]")
+            return False
+    
+    def validate_new_article(self, title: str, proposed_date: str | None = None, 
+                             repo_root: Path | None = None) -> tuple[bool, str]:
+        """
+        Validate BEFORE creating any article.
+        
+        This is the PRE-FLIGHT CHECK that prevents messes like:
+        - Duplicate IDs
+        - Duplicate dates
+        - Filename collisions
+        - Missing directories
+        
+        Args:
+            title: Article title (used to generate filename)
+            proposed_date: Desired publish date (YYYY-MM-DD), or None to use next available
+            repo_root: Path to repository root
+            
+        Returns:
+            Tuple of (is_valid, error_message)
+            - is_valid: True if article can be created, False if blocked
+            - error_message: Empty string if valid, description of issue if invalid
+        """
+        from datetime import datetime
+        
+        errors = []
+        
+        # 1. Check articles.json exists and is readable
+        articles_json = self.get_articles_json_path(repo_root)
+        if not articles_json:
+            return False, "Could not find articles.json. Run 'seo-content-cli init' first."
+        
+        try:
+            data = json.loads(articles_json.read_text())
+            articles = data.get("articles", [])
+        except Exception as e:
+            return False, f"Could not read articles.json: {e}"
+        
+        # 2. Check content directory exists and is writable
+        content_dir = self.get_content_dir(repo_root)
+        if not content_dir:
+            return False, "Could not find content directory. Check your project setup."
+        
+        if not content_dir.exists():
+            return False, f"Content directory does not exist: {content_dir}"
+        
+        # Try to write a test file
+        test_file = content_dir / ".write_test"
+        try:
+            test_file.write_text("test")
+            test_file.unlink()
+        except Exception as e:
+            return False, f"Content directory is not writable: {content_dir}"
+        
+        # 3. Calculate next ID and check for conflicts
+        next_id = self.get_next_id(repo_root)
+        existing_ids = {a.get("id") for a in articles}
+        
+        if next_id in existing_ids:
+            errors.append(f"ID {next_id} already exists in articles.json")
+        
+        # Check if filename would conflict
+        filename = self.build_filename(next_id, title)
+        content_path = content_dir / filename
+        if content_path.exists():
+            errors.append(f"Content file already exists: {filename}")
+        
+        # Check if filename is in articles.json (orphaned entry)
+        for article in articles:
+            if Path(article.get("file", "")).name == filename:
+                errors.append(f"articles.json already has entry for: {filename}")
+                break
+        
+        # 4. Check date availability
+        if proposed_date:
+            try:
+                datetime.strptime(proposed_date, "%Y-%m-%d")
+            except ValueError:
+                errors.append(f"Invalid date format: {proposed_date} (use YYYY-MM-DD)")
+                return False, "; ".join(errors) if errors else ""
+            
+            # Check if date is already taken
+            for article in articles:
+                if article.get("published_date") == proposed_date:
+                    article_id = article.get("id")
+                    article_title = article.get("title", "Unknown")[:40]
+                    errors.append(f"Date {proposed_date} already taken by ID {article_id}: {article_title}...")
+                    break
+        
+        # 5. Check slug would be unique
+        slug = generate_url_slug(filename)
+        for article in articles:
+            if article.get("url_slug") == slug:
+                errors.append(f"URL slug '{slug}' already exists (ID {article.get('id')})")
+                break
+        
+        # Return result
+        if errors:
+            return False, "; ".join(errors)
+        
+        return True, ""
+    
+    def build_filename(self, article_id: int, title: str) -> str:
+        """Build filename from article ID and title."""
+        slug = re.sub(r'[^\w\s-]', '', title).strip().lower()
+        slug = re.sub(r'[-\s]+', '_', slug)
+        return f"{article_id:03d}_{slug}.mdx"
+    
+    def check_slug_alignment(self, repo_root: Path | None = None) -> list[dict]:
+        """Check if url_slug matches filename for all articles.
+        
+        This detects mismatches where url_slug doesn't include numeric prefixes
+        that are present in the filename, which causes GSC article mapping to fail.
+        
+        Returns a list of mismatched articles with keys:
+        - id: article id
+        - url_slug: the url_slug from articles.json
+        - filename: the actual filename
+        - expected_slug: what url_slug should be to match the filename
+        
+        Note: This logic mirrors check_article_slug_alignment() in 
+        packages/seo-content-cli/src/seo_content_mcp/seo_ops.py - keep them in sync!
+        """
+        articles_json = self.get_articles_json_path(repo_root)
+        if not articles_json:
+            return []
+        
+        try:
+            data = json.loads(articles_json.read_text())
+            articles = data.get("articles", [])
+        except Exception:
+            return []
+        
+        mismatches = []
+        
+        for article in articles:
+            article_id = article.get("id")
+            url_slug = str(article.get("url_slug") or "").strip()
+            file_path = str(article.get("file") or "").strip()
+            
+            if not url_slug or not file_path:
+                continue
+            
+            # Get expected slug from filename using centralized function
+            filename = Path(file_path).name
+            expected_slug = generate_url_slug(filename)
+            
+            if url_slug != expected_slug:
+                mismatches.append({
+                    "id": article_id,
+                    "url_slug": url_slug,
+                    "filename": filename,
+                    "expected_slug": expected_slug,
+                })
+        
+        return mismatches
+    
+    def repair_slugs(self, repo_root: Path | None = None, dry_run: bool = True) -> dict:
+        """Repair all slug mismatches in articles.json.
+        
+        Args:
+            repo_root: Path to repository root
+            dry_run: If True, only report what would be fixed. If False, apply fixes.
+            
+        Returns:
+            Dict with 'fixed' (list), 'unchanged' (count), 'total' (count)
+        """
+        articles_json = self.get_articles_json_path(repo_root)
+        if not articles_json:
+            return {"error": "Could not find articles.json", "fixed": [], "unchanged": 0, "total": 0}
+        
+        try:
+            data = json.loads(articles_json.read_text())
+            articles = data.get("articles", [])
+        except Exception as e:
+            return {"error": f"Could not read articles.json: {e}", "fixed": [], "unchanged": 0, "total": 0}
+        
+        fixed = []
+        
+        for article in articles:
+            url_slug = str(article.get("url_slug") or "").strip()
+            file_path = str(article.get("file") or "").strip()
+            
+            if not url_slug or not file_path:
+                continue
+            
+            filename = Path(file_path).name
+            expected_slug = generate_url_slug(filename)
+            
+            if url_slug != expected_slug:
+                fixed.append({
+                    "id": article.get("id"),
+                    "old_slug": url_slug,
+                    "new_slug": expected_slug,
+                })
+                if not dry_run:
+                    article["url_slug"] = expected_slug
+        
+        result = {
+            "fixed": fixed,
+            "unchanged": len(articles) - len(fixed),
+            "total": len(articles),
+        }
+        
+        if not dry_run and fixed:
+            articles_json.write_text(json.dumps(data, indent=2))
+            console.print(f"[green]✓ Fixed {len(fixed)} slug(s) in articles.json[/green]")
+        
+        return result
+
+        return result
+    
+    def sync_with_content_dir(self, repo_root: Path | None = None, dry_run: bool = True) -> dict:
+        """Synchronize articles.json with content directory.
+        
+        This ensures all content files are tracked and all tracked files exist.
+        
+        Args:
+            repo_root: Path to repository root
+            dry_run: If True, only report what would be done. If False, apply changes.
+            
+        Returns:
+            Dict with actions taken:
+            - added: list of newly added articles
+            - removed: list of removed orphaned entries  
+            - duplicate_ids: list of duplicate ID issues
+            - next_id_updated: bool
+        """
+        from datetime import datetime
+        
+        result = {
+            "added": [],
+            "removed": [],
+            "duplicate_ids": [],
+            "next_id_updated": False,
+            "error": None
+        }
+        
+        articles_json = self.get_articles_json_path(repo_root)
+        if not articles_json:
+            result["error"] = "Could not find articles.json"
+            return result
+        
+        content_dir = self.get_content_dir(repo_root)
+        if not content_dir:
+            result["error"] = "Could not find content directory"
+            return result
+        
+        try:
+            data = json.loads(articles_json.read_text())
+            articles = data.get("articles", [])
+        except Exception as e:
+            result["error"] = f"Could not read articles.json: {e}"
+            return result
+        
+        # Build lookup maps
+        id_to_article = {}
+        file_to_article = {}
+        duplicates = []
+        
+        for a in articles:
+            aid = a.get('id')
+            fpath = a.get('file', '')
+            
+            # Check for duplicate IDs
+            if aid in id_to_article:
+                duplicates.append(aid)
+            else:
+                id_to_article[aid] = a
+            
+            # Map filename to article
+            if fpath:
+                fname = Path(fpath).name
+                file_to_article[fname] = a
+        
+        result["duplicate_ids"] = list(set(duplicates))
+        
+        # Get all content files
+        content_files = list(content_dir.glob("*.mdx")) + list(content_dir.glob("*.md"))
+        content_filenames = {f.name for f in content_files}
+        
+        # 1. Find untracked content files
+        for content_file in content_files:
+            fname = content_file.name
+            if fname not in file_to_article:
+                # Extract metadata from frontmatter
+                title, date, desc = self._extract_frontmatter(content_file)
+                word_count = len(content_file.read_text().split())
+                
+                # Extract ID from filename
+                import re
+                match = re.match(r'^(\d+)_(.+?)\.mdx?$', fname)
+                if match:
+                    file_id = int(match.group(1))
+                    
+                    # Check if this ID is already used
+                    if file_id in id_to_article:
+                        # ID conflict - need to assign new ID
+                        new_id = max(id_to_article.keys()) + 1 if id_to_article else 1
+                        result["duplicate_ids"].append(f"{file_id} (would reassign to {new_id})")
+                        # Skip for now - need manual resolution
+                        continue
+                    
+                    new_article = {
+                        "id": file_id,
+                        "title": title or f"Article {file_id}",
+                        "url_slug": generate_url_slug(fname),
+                        "file": f"./content/{fname}",
+                        "target_keyword": "",
+                        "keyword_difficulty": "",
+                        "target_volume": 0,
+                        "published_date": date or datetime.now().strftime('%Y-%m-%d'),
+                        "word_count": word_count,
+                        "status": "published",
+                        "content_gaps_addressed": [],
+                        "estimated_traffic_monthly": ""
+                    }
+                    
+                    result["added"].append({
+                        "id": file_id,
+                        "filename": fname,
+                        "title": new_article["title"]
+                    })
+                    
+                    if not dry_run:
+                        articles.append(new_article)
+                        id_to_article[file_id] = new_article
+                        file_to_article[fname] = new_article
+        
+        # 2. Find tracked files that don't exist (orphaned entries)
+        for fname, article in list(file_to_article.items()):
+            if fname not in content_filenames:
+                result["removed"].append({
+                    "id": article.get('id'),
+                    "filename": fname
+                })
+                if not dry_run:
+                    articles.remove(article)
+        
+        # 3. Update nextArticleId
+        if not dry_run and articles:
+            max_id = max(a['id'] for a in articles)
+            if data.get('nextArticleId') != max_id + 1:
+                data['nextArticleId'] = max_id + 1
+                result["next_id_updated"] = True
+        
+        # Save if changes made
+        if not dry_run and (result["added"] or result["removed"] or result["next_id_updated"]):
+            articles_json.write_text(json.dumps(data, indent=2))
+        
+        return result
+    
+    def _extract_frontmatter(self, content_path: Path) -> tuple:
+        """Extract title, date, description from frontmatter."""
+        try:
+            content = content_path.read_text()
+            lines = content.split('\n')
+            
+            if lines[0].strip() != '---':
+                return None, None, None
+                
+            title = date = description = None
+            
+            for line in lines[1:]:
+                if line.strip() == '---':
+                    break
+                if line.startswith('title:'):
+                    title = line.split(':', 1)[1].strip().strip('"').strip("'")
+                elif line.startswith('date:'):
+                    date = line.split(':', 1)[1].strip().strip('"').strip("'")
+                elif line.startswith('description:'):
+                    description = line.split(':', 1)[1].strip().strip('"').strip("'")
+                    
+            return title, date, description
+        except Exception:
+            return None, None, None

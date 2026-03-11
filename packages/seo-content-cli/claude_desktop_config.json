@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "seo-content": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "<ABSOLUTE_PATH_TO_AUTOMATION_REPO>/packages/seo-content-cli",
+        "run",
+        "seo-content-mcp"
+      ],
+      "env": {
+        "WORKSPACE_ROOT": "<ABSOLUTE_PATH_TO_AUTOMATION_REPO>"
+      }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+# Automation dashboard - local work data (do not commit)
+.github/automation/artifacts/
+.github/automation/task_results/
+.github/automation/specs/
+.github/automation/task_list.json
+.github/automation/*.log

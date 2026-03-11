@@ -1,0 +1,19 @@
+{
+  "projects": {
+    "my_blog": {
+      "name": "My Personal Blog",
+      "path": "/path/to/your/blog/repo",
+      "content_dir": "content/blog"
+    },
+    "company_site": {
+      "name": "Company Website",
+      "path": "/path/to/company/repo",
+      "content_dir": "src/content"
+    },
+    "expense_tracker": {
+      "name": "Expense Tracker App",
+      "path": "/path/to/expense/repo",
+      "content_dir": "webapp/content/blog"
+    }
+  }
+}

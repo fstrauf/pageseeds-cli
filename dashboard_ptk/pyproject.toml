@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools~=75.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pageseeds-cli"
+version = "1.0.0"
+description = "PageSeeds CLI for SEO automation workflows"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "prompt-toolkit~=3.0.50",
+    "rich~=13.9.0",
+]
+
+[project.scripts]
+pageseeds = "dashboard:main"
+task-dashboard = "dashboard:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["dashboard*"]

@@ -1,0 +1,13 @@
+============================================================
+Testing CapSolver API Connectivity
+============================================================
+
+1. Creating CAPTCHA task...
+   Response: {'errorId': 0, 'taskId': '80c20395-e8ec-4c81-821a-ec9c8e1c4aa9', 'status': 'idle'}
+   ✓ Task ID: 80c20395-e8ec-4c81-821a-ec9c8e1c4aa9
+
+2. Polling for result...
+   [1/30] status=ready, errorId=0
+
+   ✓ SUCCESS in 3.9s
+   Token: 0.-tfzPYvhNU2IXz8XAeIMkVIIwbziao4DZU_XnSUZcGt6O7Lf...
