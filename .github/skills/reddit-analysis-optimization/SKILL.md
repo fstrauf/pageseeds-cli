@@ -9,7 +9,7 @@ description: Run Reddit Stage 3: update engagement metrics for posted replies an
 
 ### 1) Load Posted Opportunities
 
-- `uv run --directory mcp/automation-mcp automation-cli reddit posted --project '<project>' --days 30 --limit 20`
+- `pageseeds reddit posted --project '<project>' --days 30 --limit 20`
 
 ### 2) Gather Engagement Data
 
@@ -20,11 +20,11 @@ For each opportunity, open the stored `reply_url` and record:
 
 ### 3) Update Performance Metrics
 
-- `uv run --directory mcp/automation-mcp automation-cli reddit update-performance --post-id '<id>' --reply-upvotes <n> --reply-replies <n>`
+- `pageseeds reddit update-performance --post-id '<id>' --reply-upvotes <n> --reply-replies <n>`
 
 ### 4) Analyze Patterns
 
-- `uv run --directory mcp/automation-mcp automation-cli reddit stats --project '<project>'`
+- `pageseeds reddit stats --project '<project>'`
 
 Look for:
 

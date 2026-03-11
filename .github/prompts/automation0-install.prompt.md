@@ -11,12 +11,12 @@ Install the automation payload into this repo.
 - Run (writes into `.github/skills` and `.github/prompts`):
 
 ```bash
-automation-cli repo init
+pageseeds automation repo init
 ```
 
 Then confirm:
 
 ```bash
-automation-cli repo status
+pageseeds automation repo status
 ```
 

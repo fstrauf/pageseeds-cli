@@ -1,13 +1,13 @@
 ---
 name: seo-local-setup
-description: Create a minimal repo-local SEO workspace under `automation/` so `seo-content-cli` can run anywhere without copying articles/content into the automation repo.
+description: Create a minimal repo-local SEO workspace under `automation/` so `pageseeds content` can run anywhere without copying articles/content into the automation repo.
 ---
 
 # SEO Local Setup (Repo-Local Workspace)
 
 ## Goal
 
-Enable running `seo-content-cli` in any repo with minimal context by creating a small workspace folder:
+Enable running `pageseeds content` in any repo with minimal context by creating a small workspace folder:
 
 - `automation/articles.json` (article registry used by the SEO CLIs)
 - `automation/content` (points at the canonical content folder)
@@ -20,7 +20,7 @@ This avoids syncing content into the automation repo.
 Run this from the repo where you want slash commands to live (it can be the content repo or a "control" repo):
 
 ```bash
-automation-cli seo init \
+pageseeds automation seo init \
   --site-id '<id>' \
   --content-dir 'webapp/content/blog'
 ```
@@ -35,17 +35,17 @@ Notes:
 Run:
 
 ```bash
-automation-cli seo status --website-id '<id>'
+pageseeds automation seo status --website-id '<id>'
 ```
 
 Then validate the registry is reachable:
 
 ```bash
-seo-content-cli --workspace-root automation articles-summary --website-path .
+pageseeds content --workspace-root automation articles-summary --website-path .
 ```
 
 If `content` is configured, you can also run:
 
 ```bash
-seo-content-cli --workspace-root automation validate-content --website-path .
+pageseeds content --workspace-root automation validate --website-path .
 ```

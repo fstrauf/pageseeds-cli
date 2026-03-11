@@ -25,7 +25,7 @@ Anything that requires app templates (canonicals, headers, robots rules, sitemap
 
 Step 7 execution path is CLI-first and deterministic:
 
-- Use only `automation-cli seo ...` commands for queue selection and scan context.
+- Use only `pageseeds automation seo ...` commands for queue selection and scan context.
 - Do not call `seo-content-mcp` or other MCP servers for Step 7 discovery/routing.
 - If Step 6 artifacts are missing, stop and request/re-run Step 6 (`gsc-indexing-report`) instead of using alternate discovery paths.
 
@@ -47,7 +47,7 @@ Do not use `jq`, shell pipes, or ad-hoc parsing scripts.
 Fast path (default): get edit-ready mapped files immediately:
 
 ```bash
-automation-cli seo gsc-remediation-targets \
+pageseeds automation seo gsc-remediation-targets \
   --action-queue automation/output/gsc_indexing/..._action_queue.json \
   --format lines \
   --field basename \
@@ -58,7 +58,7 @@ automation-cli seo gsc-remediation-targets \
 If you need URL-to-file mapping in one command:
 
 ```bash
-automation-cli seo gsc-remediation-targets \
+pageseeds automation seo gsc-remediation-targets \
   --action-queue automation/output/gsc_indexing/..._action_queue.json \
   --format lines \
   --field url_to_file \
@@ -68,13 +68,13 @@ automation-cli seo gsc-remediation-targets \
 Only if the fast path returns too few targets, use the broader starter input command:
 
 ```bash
-automation-cli seo gsc-remediation-inputs --format lines --field url --limit 20
+pageseeds automation seo gsc-remediation-inputs --format lines --field url --limit 20
 ```
 
 Primary target extraction (mapped content files only):
 
 ```bash
-automation-cli seo gsc-action-queue \
+pageseeds automation seo gsc-action-queue \
   --action-queue automation/output/gsc_indexing/..._action_queue.json \
   --reason-code fetch_error \
   --reason-code noindex \
@@ -92,7 +92,7 @@ automation-cli seo gsc-action-queue \
 Fallback for discovered-not-indexed set:
 
 ```bash
-automation-cli seo gsc-action-queue \
+pageseeds automation seo gsc-action-queue \
   --action-queue automation/output/gsc_indexing/..._action_queue.json \
   --reason-code not_indexed_other \
   --coverage-contains discovered \
@@ -114,13 +114,13 @@ Execution discipline for Step 7:
 Optional context pull before edits (still scoped to Step 6 queue):
 
 ```bash
-automation-cli seo gsc-watch \
+pageseeds automation seo gsc-watch \
   --site sc-domain:example.com \
   --action-queue automation/output/gsc_indexing/..._action_queue.json
 ```
 
 ```bash
-automation-cli seo gsc-site-scan \
+pageseeds automation seo gsc-site-scan \
   --site sc-domain:example.com \
   --action-queue automation/output/gsc_indexing/..._action_queue.json \
   --top-pages 5 --decliners 5 --max-pages 12
@@ -135,7 +135,7 @@ For each mapped file:
 - Remove or update obviously outdated “month/year” pages: either make evergreen (preferred) or plan redirects (ticket).
 - Ensure the page strongly links to the canonical URL you want indexed (internal links should point to the canonical).
 
-Do not write one-off parsing scripts. Use `automation-cli seo gsc-action-queue`, existing CLI tools, and direct file edits.
+Do not write one-off parsing scripts. Use `pageseeds automation seo gsc-action-queue`, existing CLI tools, and direct file edits.
 
 ### 3) Verify
 

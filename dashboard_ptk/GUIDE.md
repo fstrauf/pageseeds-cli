@@ -16,8 +16,8 @@ Reference guide for the Task Dashboard. For quick start, see [README.md](README.
 On project activation (startup, switch, or add), dashboard now auto-runs initialization checks:
 - creates missing `.github/automation` subdirectories used by tasks
 - validates essential project files (`articles.json`)
-- checks required CLIs (`automation-cli`, `seo-cli`, `seo-content-cli`)
-- checks Reddit auto-post auth readiness (`automation-cli reddit auth-status`) when token is configured
+- checks required CLI (`pageseeds`)
+- checks Reddit auto-post auth readiness (`pageseeds reddit auth-status`) when token is configured
 - checks `.gitignore` excludes automation data
 
 This catches missing essentials before task execution.
@@ -148,7 +148,7 @@ mode_map = {
 
 **`indexing_diagnostics`** - Check GSC
 - Manual trigger (menu `i`)
-- Runs: `automation-cli seo gsc-indexing-report`
+- Runs: `pageseeds automation seo gsc-indexing-report`
 - Creates: `fix_indexing` tasks from results
 
 **`fix_indexing`** - Fix indexing issues
@@ -158,7 +158,7 @@ mode_map = {
 ### Collection Tasks
 
 **`collect_gsc`** - Download GSC data
-- CLI: `automation-cli seo gsc-indexing-report`
+- CLI: `pageseeds automation seo gsc-indexing-report`
 - Output: `artifacts/gsc_collection.json`
 - Spawns: `investigate_gsc` task
 
@@ -194,7 +194,7 @@ mode_map = {
   3. target repo `.env.local`
   4. target repo `.env`
   5. automation workspace `.env`
-- Preflight check command: `automation-cli reddit auth-status` (shows auth-ready vs token/module problems)
+- Preflight check command: `pageseeds reddit auth-status` (shows auth-ready vs token/module problems)
 - **History tracking**: Posted/skipped posts recorded in `.github/automation/reddit/_posted_history.json`
 - **Deduplication**: Already-posted posts won't appear in future searches
 - **Bulk review path**: `Menu -> 1 (View/Work on Tasks) -> t (Bulk by Type) -> reddit_reply`
@@ -221,7 +221,7 @@ mode_map = {
 - **How to create**: Task menu → `x` (Custom Keywords), enter themes interactively
 - **How it works**:
   1. AI agent reads instructions from `keyword_research_instructions.md`
-  2. AI executes `seo-cli` commands directly (subprocess)
+  2. AI executes `pageseeds seo` commands directly (subprocess)
   3. AI analyzes results and selects best keywords
   4. Gets difficulty data via `batch-keyword-difficulty`
   5. Presents results for user selection
@@ -283,7 +283,7 @@ mode_map = {
 **`analyze_gsc_performance`** - Analyze GSC ranking data for optimization opportunities
 - **Goal**: Identify pages ranking in positions 3-15 (quick wins) and declining pages
 - **How it works**:
-  1. Runs `automation-cli seo gsc-site-scan` to fetch performance data
+  1. Runs `pageseeds automation seo gsc-site-scan` to fetch performance data
   2. Analyzes pages by position, impressions, and trends
   3. Categorizes opportunities:
      - **Quick Wins (Positions 3-15)**: Small improvements → big gains
@@ -456,45 +456,45 @@ INSTRUCTIONS:
 
 ## CLI Tools Reference
 
-### seo-content-cli
+### pageseeds content
 
 ```bash
 # Content validation
-seo-content-cli --workspace-root automation/general/coffee validate-content --website-path .
+pageseeds content --workspace-root automation/general/coffee validate-content --website-path .
 
 # Comprehensive diagnostic (articles.json vs content files)
-seo-content-cli --workspace-root automation/general/coffee diagnose --website-path .
-seo-content-cli --workspace-root automation/general/coffee diagnose --website-path . --verbose
+pageseeds content --workspace-root automation/general/coffee diagnose --website-path .
+pageseeds content --workspace-root automation/general/coffee diagnose --website-path . --verbose
 
 # Fix nextArticleId (sets to max_id + 1)
-seo-content-cli --workspace-root automation/general/coffee fix-next-id --website-path .
-seo-content-cli --workspace-root automation/general/coffee fix-next-id --website-path . --dry-run
+pageseeds content --workspace-root automation/general/coffee fix-next-id --website-path .
+pageseeds content --workspace-root automation/general/coffee fix-next-id --website-path . --dry-run
 
 # Date analysis
-seo-content-cli --workspace-root automation/general/coffee analyze-dates --website-path .
+pageseeds content --workspace-root automation/general/coffee analyze-dates --website-path .
 
 # Fix dates (only recent/draft articles)
-seo-content-cli --workspace-root automation/general/coffee fix-dates --website-path .
+pageseeds content --workspace-root automation/general/coffee fix-dates --website-path .
 
 # Sync and validate (check index/content gaps, optionally sync dates)
-seo-content-cli --workspace-root automation/general/coffee sync-and-validate --website-path .
-seo-content-cli --workspace-root automation/general/coffee sync-and-validate --website-path . --apply-sync
+pageseeds content --workspace-root automation/general/coffee sync-and-validate --website-path .
+pageseeds content --workspace-root automation/general/coffee sync-and-validate --website-path . --apply-sync
 
 # Scan internal links
-seo-content-cli --workspace-root automation/general/coffee scan-internal-links --website-path .
+pageseeds content --workspace-root automation/general/coffee scan-internal-links --website-path .
 
 # Generate linking plan
-seo-content-cli --workspace-root automation/general/coffee generate-linking-plan --website-path . --missing-only
+pageseeds content --workspace-root automation/general/coffee generate-linking-plan --website-path . --missing-only
 
 # Add article links
-seo-content-cli --workspace-root automation/general/coffee add-article-links --website-path . --source-id {ID} --target-ids {ID1} {ID2}
+pageseeds content --workspace-root automation/general/coffee add-article-links --website-path . --source-id {ID} --target-ids {ID1} {ID2}
 ```
 
-### automation-cli
+### pageseeds automation
 
 ```bash
 # GSC indexing report
-automation-cli seo gsc-indexing-report \
+pageseeds automation seo gsc-indexing-report \
   --site sc-domain:example.com \
   --sitemap-url https://example.com/sitemap.xml \
   --limit 200 \
@@ -868,10 +868,10 @@ Run diagnostics periodically to catch issues early:
 
 ```bash
 # Quick health check
-seo-content-cli diagnose --website-path /path/to/project
+pageseeds content diagnose --website-path /path/to/project
 
 # Recommended: Run before publishing
-seo-content-cli diagnose --website-path /path/to/project --verbose
+pageseeds content diagnose --website-path /path/to/project --verbose
 ```
 
 **Best practices:**
@@ -885,10 +885,10 @@ seo-content-cli diagnose --website-path /path/to/project --verbose
 **Diagnose issues:**
 ```bash
 # Comprehensive diagnostic
-seo-content-cli diagnose --website-path /path/to/project
+pageseeds content diagnose --website-path /path/to/project
 
 # With verbose output (shows all mismatches)
-seo-content-cli diagnose --website-path /path/to/project --verbose
+pageseeds content diagnose --website-path /path/to/project --verbose
 ```
 
 This checks:
@@ -914,10 +914,10 @@ Examples of correct alignment:
 **Fix common issues:**
 ```bash
 # Fix nextArticleId if incorrect
-seo-content-cli fix-next-id --website-path /path/to/project
+pageseeds content fix-next-id --website-path /path/to/project
 
 # Sync frontmatter dates from articles.json
-seo-content-cli sync-and-validate --website-path /path/to/project --apply-sync
+pageseeds content sync-and-validate --website-path /path/to/project --apply-sync
 
 # Fix slug alignment (update url_slug to match filenames)
 python3 -c "
@@ -967,7 +967,7 @@ python3 dashboard_ptk/fix_date_clusters.py  # Shows changes without applying
 ### Required Configuration (Target Repo)
 
 > ⚠️ **Reddit tasks require project-specific config files in the target repo.**
-> These are NOT installed by `automation-cli repo init` - you must create them.
+> These are NOT installed by `pageseeds automation repo init` - you must create them.
 
 Create these files in `{repo}/.github/automation/`:
 
@@ -1222,7 +1222,7 @@ python3 tests/test_keyword_research.py
 
 **Tests cover:**
 - MCP configuration check (ensures no conflicts)
-- `seo-cli` availability
+- `pageseeds seo` availability
 - `keyword-generator` command functionality
 - `batch-keyword-difficulty` command functionality
 - Instructions file completeness

@@ -445,7 +445,7 @@ class CollectionRunner(TaskRunner):
             console.print(f"  2. Verify site '{site}' exists in GSC")
             console.print(f"  3. Check sitemap URL is accessible: {sitemap_url}")
             console.print(f"  4. Try running manually:")
-            console.print(f"[dim]     automation-cli seo gsc-indexing-report --site {site} --sitemap-url {sitemap_url} --limit 10[/dim]")
+            console.print(f"[dim]     pageseeds automation seo gsc-indexing-report --site {site} --sitemap-url {sitemap_url} --limit 10[/dim]")
             
             return False
             

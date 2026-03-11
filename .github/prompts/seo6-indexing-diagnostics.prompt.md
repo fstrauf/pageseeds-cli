@@ -9,12 +9,12 @@ Run SEO Step 6 in this repo.
 
 - Skill (source of truth): `.github/skills/seo-indexing-diagnostics/SKILL.md`
 - Step 6 uses centralized tool code from the automation repo (no scripts are copied into this repo).
-- Follow the predefined CLI path only (`automation-cli seo ...`); do not use MCP server tools for Step 6 routing/discovery.
+- Follow the predefined CLI path only (`pageseeds automation seo ...`); do not use MCP server tools for Step 6 routing/discovery.
 
 Quick command:
 
 ```bash
-automation-cli seo gsc-indexing-report \
+pageseeds automation seo gsc-indexing-report \
   --site sc-domain:example.com \
   --sitemap-url https://example.com/sitemap.xml \
   --limit 200 --workers 2

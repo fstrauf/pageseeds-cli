@@ -125,7 +125,7 @@ class IndexingRunner(TaskRunner):
                 console.print(f"[dim]  1. Try again with a smaller URL limit (50-100 instead of 200)[/dim]")
                 console.print(f"[dim]  2. Check GSC API access and service account permissions[/dim]")
                 console.print(f"[dim]  3. Run the command manually to see detailed progress:[/dim]")
-                console.print(f"[dim]     automation-cli seo gsc-indexing-report --site {site} --sitemap-url {sitemap_url} --limit 50[/dim]")
+                console.print(f"[dim]     pageseeds automation seo gsc-indexing-report --site {site} --sitemap-url {sitemap_url} --limit 50[/dim]")
             
             return False
     

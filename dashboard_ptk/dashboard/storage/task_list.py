@@ -245,7 +245,7 @@ class TaskList:
             title=f"Collect {source.upper()} data",
             phase="collection",
             priority="high",
-            action_command=f"automation-cli campaign collect --source {source}",
+            action_command=f"pageseeds automation campaign collect --source {source}",
             output_artifact=f"artifacts/{source}_collection.json"
         )
     

@@ -10,5 +10,5 @@ Check repo-local SEO workspace status.
 - Skill (source of truth): `.github/skills/seo-local-setup/SKILL.md`
 
 ```bash
-automation-cli seo status
+pageseeds automation seo status
 ```

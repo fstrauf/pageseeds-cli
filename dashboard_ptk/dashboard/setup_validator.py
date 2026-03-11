@@ -43,7 +43,7 @@ class ValidationResult:
 class SetupValidator:
     """Validates the user's setup before running."""
     
-    REQUIRED_CLIS = ["automation-cli", "seo-cli", "seo-content-cli"]
+    REQUIRED_CLIS = ["pageseeds"]
     AGENT_CLI = "kimi"
     
     def __init__(self):
@@ -66,10 +66,14 @@ class SetupValidator:
     def _check_cli_tools(self, result: ValidationResult):
         """Check CLI tools are installed."""
         for cli in self.REQUIRED_CLIS:
+            if cli == "pageseeds":
+                display_name = "pageseeds (unified CLI)"
+            else:
+                display_name = cli
             if not shutil.which(cli):
                 result.issues.append(ValidationIssue(
                     severity="error",
-                    message=f"Missing CLI: {cli}",
+                    message=f"Missing CLI: {display_name}",
                     fix_hint="Install with: ./scripts/install_uv_tools.sh"
                 ))
     

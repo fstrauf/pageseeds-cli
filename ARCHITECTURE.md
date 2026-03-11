@@ -47,7 +47,7 @@ Workflow knowledge lives here. Each skill is a markdown file describing:
 - What inputs/outputs to expect
 - How to execute the workflow
 
-Skills are copied to target repos during `automation-cli repo init`.
+Skills are copied to target repos during `pageseeds automation repo init`.
 
 ## Execution Model
 

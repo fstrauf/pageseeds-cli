@@ -27,7 +27,7 @@ Look for:
 ### Step 4: Research New Keywords
 Use the keyword research tool:
 ```bash
-automation-cli seo keyword-research --theme "your theme" --output output/keyword_findings.json
+pageseeds automation seo keyword-research --theme "your theme" --output output/keyword_findings.json
 ```
 
 Or use the Python API:

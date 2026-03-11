@@ -1,13 +1,13 @@
 ---
 name: seo-ops-management
-description: Notes for multi-site SEO ops (registry-based). Repo-local installs do not use `seo-content-cli ops`.
+description: Notes for multi-site SEO ops (registry-based). Repo-local installs do not use `pageseeds content ops`.
 ---
 
 # SEO Ops: Drift, Dates, and Dashboard
 
 This skill captures the operational game plan for running multiple SEO sites with strict publishing pipelines.
 
-Repo-local note: the distributed installer intentionally does NOT install a multi-site registry, so `seo-content-cli ops ...` commands are out of scope for repo-local workflows.
+Repo-local note: the distributed installer intentionally does NOT install a multi-site registry, so `pageseeds content ops ...` commands are out of scope for repo-local workflows.
 
 ## Principles
 

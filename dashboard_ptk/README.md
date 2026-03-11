@@ -319,13 +319,13 @@ Main Menu → d
 
 ```bash
 # Validate content
-seo-content-cli --workspace-root automation/general/coffee validate-content --website-path .
+pageseeds content --workspace-root automation/general/coffee validate-content --website-path .
 
 # Check dates
-seo-content-cli --workspace-root automation/general/coffee analyze-dates --website-path .
+pageseeds content --workspace-root automation/general/coffee analyze-dates --website-path .
 
 # GSC indexing
-automation-cli seo gsc-indexing-report --site sc-domain:example.com --sitemap-url https://example.com/sitemap.xml
+pageseeds automation seo gsc-indexing-report --site sc-domain:example.com --sitemap-url https://example.com/sitemap.xml
 ```
 
 ## Data Flow

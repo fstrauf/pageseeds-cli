@@ -1638,7 +1638,16 @@ def _build_parser() -> argparse.ArgumentParser:
     sv.add_argument("--compact", action="store_true", help="Output only summary (no phase details)")
     sv.set_defaults(func=_cmd_ops_sync_and_validate)
 
+    # Version command
+    ver = sp.add_parser("version", help="Check CLI version and available updates")
+    ver.set_defaults(func=_cmd_version)
+
     return p
+
+
+def _cmd_version(args: argparse.Namespace) -> None:
+    from . import version_check
+    version_check.print_version_check("seo-content-cli", "seo-content-mcp")
 
 
 def main(argv: list[str] | None = None) -> None:

@@ -350,7 +350,7 @@ WRITE: Save to {result_dir}/research.json
             return False
         
         console.print(f"\n[bold]Agentic Keyword Research[/bold]")
-        console.print("[dim]AI will run seo-cli commands for real Ahrefs data...[/dim]\n")
+        console.print("[dim]AI will run pageseeds seo commands for real Ahrefs data...[/dim]\n")
         
         # Read the instructions file
         instructions_path = Path(__file__).parent / "keyword_research_instructions.md"
@@ -384,10 +384,10 @@ EFFICIENCY GUIDELINES:
 
 STEPS:
 1. Identify 3 best seed keywords from the product
-2. Run: seo-cli keyword-generator --keyword "SEED" --country us
+2. Run: pageseeds seo keywords --keyword "SEED" --country us
 3. Collect unique keywords (check 'all' array in JSON)
 4. Select 6-8 most promising (good volume + relevance)
-5. Run: seo-cli batch-keyword-difficulty --keywords-file /tmp/kw.txt --country us
+5. Run: pageseeds seo batch-difficulty --keywords-file /tmp/kw.txt --country us
 6. Write final JSON to: {output_file}
 
 ⚠️ CRITICAL: Use this exact Python code to write results:
@@ -401,7 +401,7 @@ with open('{output_file}', 'w') as f:
 Speed is important - don't over-analyze, just get good keywords and write the file."""
         
         console.print("[bold cyan]Running AI agent with CLI tools...[/bold cyan]")
-        console.print("[dim]AI will run seo-cli commands directly (timeout: 10 min)[/dim]")
+        console.print("[dim]AI will run pageseeds seo commands directly (timeout: 10 min)[/dim]")
         console.print("[dim]This may take 3-8 minutes depending on keyword volume...[/dim]\n")
         
         try:
@@ -587,7 +587,7 @@ Landing pages are for CONVERSION, not just traffic:
 WRITE: Save to {result_dir}/research.json
 
 ## SPEED CONSTRAINTS (MANDATORY):
-- MAX 3 seo-cli keyword research calls
+- MAX 3 pageseeds seo keyword research calls
 - MAX 7 keyword-difficulty checks
 - Total research time: under 3 minutes
 - Don't analyze every competitor deeply - just note who's ranking

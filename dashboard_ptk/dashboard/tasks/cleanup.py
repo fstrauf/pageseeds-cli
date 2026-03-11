@@ -29,7 +29,7 @@ WORKSPACE: {workspace}
 
 STEPS:
 1. Validate content (read-only check):
-   seo-content-cli --workspace-root {workspace} validate-content --website-path .
+   pageseeds content validate --workspace-root {workspace} --website-path .
 
 2. Review validation results for:
    - Duplicate title headings
@@ -38,11 +38,11 @@ STEPS:
    - articles.json out of sync with actual .mdx files
 
 3. Clean content (fix structural issues only):
-   seo-content-cli --workspace-root {workspace} clean-content --website-path .
+   pageseeds content clean --workspace-root {workspace} --website-path .
    (This fixes duplicate headings, frontmatter format - NOT dates)
 
 4. Analyze dates (report only, DO NOT FIX):
-   seo-content-cli --workspace-root {workspace} analyze-dates --website-path .
+   pageseeds content analyze-dates --workspace-root {workspace} --website-path .
    
    Report any issues found:
    - Date overlaps between articles
@@ -57,7 +57,7 @@ REQUIREMENTS:
 - Ensure articles.json accurately reflects actual content files
 - REPORT date issues but do NOT fix them (publish step handles this)
 - Verify frontmatter correctness on sample files
-- Use seo-content-cli commands only
+- Use pageseeds content commands only
 - NEVER change dates of published articles
 """
         

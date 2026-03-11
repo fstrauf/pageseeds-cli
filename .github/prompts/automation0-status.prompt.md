@@ -8,12 +8,12 @@ agent: agent
 Check whether this repo's automation payload is out of sync with the source.
 
 ```bash
-automation-cli repo status
+pageseeds automation repo status
 ```
 
 If `out_of_sync` is true, run:
 
 ```bash
-automation-cli repo update
+pageseeds automation repo update
 ```
 

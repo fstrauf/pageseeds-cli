@@ -37,7 +37,7 @@ Extract from reddit_config.md:
 
 For each subreddit + query:
 ```
-automation-cli reddit search-submissions --query '<term>' --subreddit '<subreddit>' --limit 30 --sort relevance --time week
+pageseeds reddit search-submissions --query '<term>' --subreddit '<subreddit>' --limit 30 --sort relevance --time week
 ```
 
 **EXCLUDED SUBREDDITS (Never Search):**

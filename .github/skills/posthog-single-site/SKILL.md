@@ -22,7 +22,7 @@ Repo-local workspace:
 ### Option 1: Command-line flags (simplest)
 
 ```bash
-automation-cli posthog report \
+pageseeds automation posthog report \
   --repo-root . \
   --project-id 12345 \
   --api-key-env POSTHOG_API_KEY \
@@ -45,7 +45,7 @@ Create `automation/posthog_config.json`:
 
 Then run:
 ```bash
-automation-cli posthog report --repo-root . --refresh
+pageseeds automation posthog report --repo-root . --refresh
 ```
 
 The CLI will auto-detect `automation/posthog_config.json` if present.
@@ -56,19 +56,19 @@ Use the centralized CLI wrapper:
 
 ```bash
 # List your PostHog projects (to find project_id)
-automation-cli posthog list-projects --repo-root . --api-key-env POSTHOG_API_KEY
+pageseeds automation posthog list-projects --repo-root . --api-key-env POSTHOG_API_KEY
 
 # List dashboards for a project
-automation-cli posthog list-dashboards --repo-root . --project-id 12345 --api-key-env POSTHOG_API_KEY
+pageseeds automation posthog list-dashboards --repo-root . --project-id 12345 --api-key-env POSTHOG_API_KEY
 
 # Pull analytics report
-automation-cli posthog report --repo-root . --project-id 12345 --api-key-env POSTHOG_API_KEY --refresh
+pageseeds automation posthog report --repo-root . --project-id 12345 --api-key-env POSTHOG_API_KEY --refresh
 
 # Generate action queue from insights
-automation-cli posthog action-queue --repo-root . --write-md
+pageseeds automation posthog action-queue --repo-root . --write-md
 
 # Disable incomplete data detection (if you want current day's partial data)
-automation-cli posthog report --repo-root . --no-skip-incomplete
+pageseeds automation posthog report --repo-root . --no-skip-incomplete
 ```
 
 ## Authentication
@@ -99,10 +99,10 @@ POSTHOG_API_KEY=phx_...
 
 ```bash
 # List projects to confirm access
-automation-cli posthog list-projects --repo-root . --api-key-env POSTHOG_API_KEY
+pageseeds automation posthog list-projects --repo-root . --api-key-env POSTHOG_API_KEY
 
 # List dashboards to find which to pull
-automation-cli posthog list-dashboards --repo-root . --project-id <ID> --api-key-env POSTHOG_API_KEY
+pageseeds automation posthog list-dashboards --repo-root . --project-id <ID> --api-key-env POSTHOG_API_KEY
 ```
 
 ### Step 3: Configure (optional but recommended)
@@ -121,12 +121,12 @@ Create `automation/posthog_config.json` with your project details:
 
 With config file:
 ```bash
-automation-cli posthog report --repo-root . --refresh
+pageseeds automation posthog report --repo-root . --refresh
 ```
 
 Or with flags:
 ```bash
-automation-cli posthog report \
+pageseeds automation posthog report \
   --repo-root . \
   --project-id 12345 \
   --api-key-env POSTHOG_API_KEY \
@@ -148,22 +148,22 @@ Use the `view` command to extract specific fields without writing Python/jq:
 
 ```bash
 # View situations detected by rules
-automation-cli posthog view --field situations
+pageseeds automation posthog view --field situations
 
 # View action candidates
-automation-cli posthog view --field action_candidates
+pageseeds automation posthog view --field action_candidates
 
 # View insights with values
-automation-cli posthog view --field insights
+pageseeds automation posthog view --field insights
 
 # View page traffic
-automation-cli posthog view --field page_traffic
+pageseeds automation posthog view --field page_traffic
 
 # View breakdown values (referring domains, browsers, etc.)
-automation-cli posthog view --field breakdowns
+pageseeds automation posthog view --field breakdowns
 
 # JSON format for programmatic use
-automation-cli posthog view --field situations --format json
+pageseeds automation posthog view --field situations --format json
 ```
 
 **DO NOT** write ad-hoc Python scripts to parse the JSON files. Use the `view` command.
@@ -171,7 +171,7 @@ automation-cli posthog view --field situations --format json
 ### Step 7: Build action queue
 
 ```bash
-automation-cli posthog action-queue --repo-root . --write-md
+pageseeds automation posthog action-queue --repo-root . --write-md
 ```
 
 ## Guardrails

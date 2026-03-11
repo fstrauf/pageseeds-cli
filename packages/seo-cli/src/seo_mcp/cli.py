@@ -149,6 +149,11 @@ def _cmd_traffic(args: argparse.Namespace) -> None:
     _print_json(_get_traffic(domain_or_url=args.domain_or_url, country=args.country, mode=args.mode))
 
 
+def _cmd_version(args: argparse.Namespace) -> None:
+    from . import version_check
+    version_check.print_version_check("seo-cli", "seo-mcp")
+
+
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="seo-cli", description="SEO research operations without MCP")
     sp = p.add_subparsers(dest="cmd", required=True)
@@ -199,6 +204,9 @@ def _build_parser() -> argparse.ArgumentParser:
     tr.add_argument("--country", default="None")
     tr.add_argument("--mode", choices=["subdomains", "exact"], default="subdomains")
     tr.set_defaults(func=_cmd_traffic)
+
+    ver = sp.add_parser("version", help="Check CLI version and available updates")
+    ver.set_defaults(func=_cmd_version)
 
     return p
 

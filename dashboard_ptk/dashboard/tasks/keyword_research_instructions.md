@@ -6,7 +6,7 @@ You are an expert SEO researcher. You have access to these CLI tools for keyword
 
 ### 1. Generate Keyword Ideas
 ```bash
-seo-cli keyword-generator --keyword "SEED_KEYWORD" --country us
+pageseeds seo keyword-generator --keyword "SEED_KEYWORD" --country us
 ```
 Returns JSON with keyword ideas including:
 - `regular`: List of keyword ideas with volume and difficulty indicators
@@ -17,17 +17,17 @@ Volume indicators: "MoreThanOneThousand", "MoreThanOneHundred", "LessThanOneHund
 
 ### 2. Check Keyword Difficulty (Batch)
 ```bash
-echo -e "keyword1\nkeyword2\nkeyword3" | seo-cli batch-keyword-difficulty --country us
+echo -e "keyword1\nkeyword2\nkeyword3" | pageseeds seo batch-keyword-difficulty --country us
 ```
 Or with a file:
 ```bash
-seo-cli batch-keyword-difficulty --keywords-file /path/to/keywords.txt --country us
+pageseeds seo batch-keyword-difficulty --keywords-file /path/to/keywords.txt --country us
 ```
 Returns JSON with KD scores for each keyword.
 
 ### 3. Check Single Keyword Difficulty
 ```bash
-seo-cli keyword-difficulty --keyword "KEYWORD" --country us
+pageseeds seo keyword-difficulty --keyword "KEYWORD" --country us
 ```
 
 ## Your Task Flow

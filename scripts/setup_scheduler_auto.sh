@@ -30,7 +30,7 @@ if ! command -v python3 &> /dev/null; then
 fi
 log_success "Python 3 found"
 
-for cli in automation-cli seo-cli seo-content-cli; do
+for cli in pageseeds; do
     if command -v $cli &> /dev/null; then
         log_success "$cli found"
     else

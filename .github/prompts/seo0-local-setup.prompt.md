@@ -12,7 +12,7 @@ Set up the repo-local SEO workspace.
 Run:
 
 ```bash
-automation-cli seo init \
+pageseeds automation seo init \
   --site-id "<website_id>" \
   --content-dir "<source_content_dir>" \
   --link-mode symlink \

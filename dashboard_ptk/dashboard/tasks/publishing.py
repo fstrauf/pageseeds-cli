@@ -301,7 +301,7 @@ REQUIREMENTS:
 - Fix structural issues only
 - Report date overlaps or future dates for next phase
 - Do NOT change any dates
-- Use seo-content-cli commands only
+- Use pageseeds content commands only
 
 Report what structural issues were found and fixed."""
         
@@ -607,9 +607,9 @@ Report what structural issues were found and fixed."""
             "6. After fixing issues, change status from 'draft' to 'published'",
             "",
             "CLI COMMANDS:",
-            f"- Validate: seo-content-cli --workspace-root {workspace} validate-content --website-path .",
-            f"- Fix dates: seo-content-cli --workspace-root {workspace} fix-dates --website-path .",
-            f"- Check: seo-content-cli --workspace-root {workspace} analyze-dates --website-path .",
+            f"- Validate: pageseeds content validate --workspace-root {workspace} --website-path .",
+            f"- Fix dates: pageseeds content fix-dates --workspace-root {workspace} --website-path .",
+            f"- Check: pageseeds content analyze-dates --workspace-root {workspace} --website-path .",
             "",
             "Report what was published and what issues were fixed.",
         ])

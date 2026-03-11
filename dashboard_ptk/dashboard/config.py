@@ -3,7 +3,7 @@ Configuration constants and paths
 
 All automation data lives in the target repo's .github/automation/ directory.
 The dashboard_ptk code is designed to work from any repo that has the automation
-payload installed via `automation-cli repo install`.
+payload installed via `pageseeds automation repo install`.
 """
 import os
 from pathlib import Path
@@ -26,7 +26,7 @@ def get_automation_dir(repo_root: Path | None = None) -> Path:
 
 # Legacy compatibility - these are deprecated, use get_automation_dir() instead
 AUTOMATION_ROOT = get_repo_root()
-CLI_DIR = Path(__file__).parent.parent.parent / "packages" / "automation-cli"
+CLI_DIR = Path(__file__).parent.parent.parent / "packages" / "pageseeds"
 USER_CONFIG_DIR = Path.home() / ".config/automation"
 PROJECTS_CONFIG = USER_CONFIG_DIR / "projects.json"
 WEBSITES_REGISTRY = get_repo_root() / "WEBSITES_REGISTRY.json"

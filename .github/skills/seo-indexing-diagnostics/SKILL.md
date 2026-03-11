@@ -40,7 +40,7 @@ Credentials:
 
 Use the centralized CLI wrapper (tool code lives in the automation repo):
 
-- `automation-cli seo gsc-indexing-report`
+- `pageseeds automation seo gsc-indexing-report`
 
 It will:
 
@@ -60,7 +60,7 @@ It will:
 Run from the repo root:
 
 ```bash
-automation-cli seo gsc-indexing-report \
+pageseeds automation seo gsc-indexing-report \
   --site sc-domain:example.com \
   --sitemap-url https://example.com/sitemap.xml
 ```
@@ -71,7 +71,7 @@ If you need to re-run with an explicit Search Console property:
 - URL-prefix property: `https://www.example.com/`
 
 ```bash
-automation-cli seo gsc-indexing-report \
+pageseeds automation seo gsc-indexing-report \
   --site sc-domain:example.com \
   --sitemap-url https://example.com/sitemap.xml
 ```
@@ -122,6 +122,6 @@ Deliverable should include:
 - Do not assume sitemap URLs are correct; treat sitemap as a hypothesis that needs validation.
 - Avoid giant runs first. Start with a limit (e.g. 200–500 URLs), verify correctness, then scale up.
 - URL Inspection quotas are limited; re-check only the affected URLs after you implement fixes.
-- Use only the predefined CLI path for Step 6 (`automation-cli seo gsc-indexing-report` and related `automation-cli seo ...` selectors).
+- Use only the predefined CLI path for Step 6 (`pageseeds automation seo gsc-indexing-report` and related `pageseeds automation seo ...` selectors).
 - Do not call `seo-content-mcp` or other MCP servers for Step 6 discovery/routing.
 - Resolve site/sitemap from explicit args and repo-local files (manifest/workspace config). If missing, stop and return a clear command asking for `--site` and `--sitemap-url` rather than using alternative tool paths.

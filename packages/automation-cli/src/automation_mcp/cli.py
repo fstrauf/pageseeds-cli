@@ -26,6 +26,7 @@ from .campaign import (
     prune_campaigns,
     transition_item,
 )
+from . import version_check
 
 
 def _print_json(data: object) -> None:
@@ -1909,9 +1910,22 @@ def _reddit_import_opportunities(args: argparse.Namespace) -> None:
     )
 
 
+def _version_cmd(args: argparse.Namespace) -> None:
+    """Check version and print update status."""
+    if args.all:
+        version_check.print_all_versions()
+    else:
+        version_check.print_version_check("automation-cli", "automation-mcp")
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="automation-cli", description="Run automation workflows without MCP")
     subparsers = parser.add_subparsers(dest="command", required=True)
+    
+    # Version command
+    version_parser = subparsers.add_parser("version", help="Check CLI version and available updates")
+    version_parser.add_argument("--all", action="store_true", help="Check all CLI packages for updates")
+    version_parser.set_defaults(func=_version_cmd)
 
     repo = subparsers.add_parser("repo", help="Install/update workflow payload into a repo (skills/prompts)")
     repo_sub = repo.add_subparsers(dest="repo_command", required=True)

@@ -25,7 +25,7 @@ Output: posted replies tracked in the database.
 
 Use the CLI (no MCP server):
 
-- `uv run --directory mcp/automation-mcp automation-cli reddit pending --project <project> --severity CRITICAL`
+- `pageseeds reddit pending --project <project> --severity CRITICAL`
 
 ### 2) Review Each Opportunity
 
@@ -42,10 +42,10 @@ Use the CLI (no MCP server):
 ### 4) Mark Posted / Skipped in DB
 
 - Posted (no MCP server):
-	- `uv run --directory mcp/automation-mcp automation-cli reddit mark-posted --post-id <id> --reply-url '<comment_url>' --reply-text-file <path>`
+	- `pageseeds reddit mark-posted --post-id <id> --reply-url '<comment_url>' --reply-text-file <path>`
 	- Tip: use `--reply-text-file -` to paste via stdin.
 - Skipped (no MCP server):
-	- `uv run --directory mcp/automation-mcp automation-cli reddit mark-skipped --post-id <id> --reason '...'`
+	- `pageseeds reddit mark-skipped --post-id <id> --reason '...'`
 
 Optional:
-- View stats: `uv run --directory mcp/automation-mcp automation-cli reddit stats --project <project>`
+- View stats: `pageseeds reddit stats --project <project>`

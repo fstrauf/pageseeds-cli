@@ -21,7 +21,7 @@ Inputs:
 Commands:
 
 ```bash
-automation-cli seo gsc-indexing-report --manifest general/{{PROJECT_NAME}}/manifest.json
+pageseeds automation seo gsc-indexing-report --manifest general/{{PROJECT_NAME}}/manifest.json
 ```
 
 Credentials are auto-resolved from machine-local automation secrets/env sources; only ask for credential setup if the command fails with missing auth.

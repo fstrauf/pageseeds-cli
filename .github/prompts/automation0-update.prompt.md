@@ -11,7 +11,7 @@ Update the automation payload in this repo.
 - Run:
 
 ```bash
-automation-cli repo update
+pageseeds automation repo update
 ```
 
 This preserves previously-installed bundles (for example `seo`) via `.github/automation/automation_payload.json`.
@@ -19,5 +19,5 @@ This preserves previously-installed bundles (for example `seo`) via `.github/aut
 Then confirm:
 
 ```bash
-automation-cli repo status
+pageseeds automation repo status
 ```

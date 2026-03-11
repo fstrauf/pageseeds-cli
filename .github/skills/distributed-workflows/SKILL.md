@@ -24,17 +24,17 @@ Eliminate the "sync articles into automation repo, edit, sync back" loop by:
 Install tools in editable mode so changes in the automation repo apply immediately everywhere.
 
 ```bash
-uv tool install -e /path/to/automation/packages/seo-content-cli
-uv tool install -e /path/to/automation/packages/seo-cli
-uv tool install -e /path/to/automation/packages/automation-cli
+uv tool install -e /path/to/automation/packages/pageseeds
+uv tool install -e /path/to/automation/packages/pageseeds
+uv tool install -e /path/to/automation/packages/pageseeds
 uv tool update-shell
 ```
 
 After install, any repo can run:
 
-- `seo-content-cli ...`
-- `seo-cli ...`
-- `automation-cli ...`
+- `pageseeds content ...`
+- `pageseeds seo ...`
+- `pageseeds ...`
 
 ## Secrets (One-Time Per Machine)
 
@@ -42,7 +42,7 @@ Some workflows call external services (e.g. Ahrefs via CapSolver) and require AP
 
 Preferred: set real environment variables in your shell startup.
 
-Fallbacks supported by `seo-cli` (no per-repo copying required):
+Fallbacks supported by `pageseeds seo` (no per-repo copying required):
 
 1) `~/.config/automation/secrets.env` (format: `CAPSOLVER_API_KEY=...`)
 2) `/path/to/automation/.env` (automation repo root) as a best-effort fallback
@@ -52,19 +52,19 @@ Fallbacks supported by `seo-cli` (no per-repo copying required):
 If you want to author skills in the automation repo and then copy them into a target repo, prefer the payload installer:
 
 ```bash
-automation-cli repo init --to /path/to/target/repo --bundle seo
+pageseeds automation repo init --to /path/to/target/repo --bundle seo
 ```
 
 For PostHog workflows:
 
 ```bash
-automation-cli repo init --to /path/to/target/repo --bundle posthog
+pageseeds automation repo init --to /path/to/target/repo --bundle posthog
 ```
 
 After the initial install, updates preserve the installed bundles via the stamp file:
 
 ```bash
-automation-cli repo update --to /path/to/target/repo
+pageseeds automation repo update --to /path/to/target/repo
 ```
 
 If you want to change bundles explicitly, pass `--bundle` again.
@@ -74,19 +74,19 @@ Fallback: raw copier (`skills sync`) is intentionally dumb (no deletes, no trans
 Dry-run:
 
 ```bash
-automation-cli skills sync --to /path/to/target/repo --dry-run
+pageseeds automation skills sync --to /path/to/target/repo --dry-run
 ```
 
 Apply (overwrite existing files):
 
 ```bash
-automation-cli skills sync --to /path/to/target/repo --force
+pageseeds automation skills sync --to /path/to/target/repo --force
 ```
 
 To limit the sync to specific skills:
 
 ```bash
-automation-cli skills sync \
+pageseeds automation skills sync \
   --to /path/to/target/repo --include seo-indexing-diagnostics --include seo-indexing-remediation --force
 ```
 
@@ -102,14 +102,14 @@ If you want a repo to run SEO workflows without copying articles/content into th
 create a small `automation/` workspace in that repo:
 
 ```bash
-automation-cli seo init \
+pageseeds automation seo init \
   --site-id '<optional_id>' \
   --content-dir 'path/to/canonical/content/dir' \
   --force
 ```
 
-Then run `seo-content-cli` against it:
+Then run `pageseeds content` against it:
 
 ```bash
-seo-content-cli --workspace-root automation articles-summary --website-path .
+pageseeds content --workspace-root automation articles-summary --website-path .
 ```

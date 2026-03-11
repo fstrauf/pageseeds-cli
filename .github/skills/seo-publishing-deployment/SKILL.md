@@ -7,7 +7,7 @@ description: Run SEO Step 4 (publishing & deployment) repo-locally: validate/cle
 
 ⚠️ **EXECUTION MANDATE**: Do NOT ask questions, summarize, or provide options. Execute this workflow immediately and completely.
 
-This is the final step before content goes live. In the repo-local setup, deployment is handled by the repo’s normal build/deploy pipeline (not `seo-content-cli ops`).
+This is the final step before content goes live. In the repo-local setup, deployment is handled by the repo’s normal build/deploy pipeline (not `pageseeds content ops`).
 
 ## Overview
 
@@ -42,23 +42,23 @@ This is the final step before content goes live. In the repo-local setup, deploy
 ### 1) Validate and Clean
 
 ```bash
-seo-content-cli --workspace-root automation validate-content --website-path .
-seo-content-cli --workspace-root automation clean-content --website-path .
-seo-content-cli --workspace-root automation validate-content --website-path .
+pageseeds content --workspace-root automation validate --website-path .
+pageseeds content --workspace-root automation clean --website-path .
+pageseeds content --workspace-root automation validate --website-path .
 ```
 
 ### 2) Sanity-Check Dates (Optional but Recommended)
 
 ```bash
-seo-content-cli --workspace-root automation analyze-dates --website-path .
-seo-content-cli --workspace-root automation fix-dates --website-path .
-seo-content-cli --workspace-root automation analyze-dates --website-path .
+pageseeds content --workspace-root automation analyze-dates --website-path .
+pageseeds content --workspace-root automation fix-dates --website-path .
+pageseeds content --workspace-root automation analyze-dates --website-path .
 ```
 
 ### 3) Confirm What’s Ready
 
 ```bash
-seo-content-cli --workspace-root automation articles-index --website-path . --status ready_to_publish
+pageseeds content --workspace-root automation articles-index --website-path . --status ready_to_publish
 ```
 
 ### 4) Deploy

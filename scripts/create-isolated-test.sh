@@ -344,7 +344,7 @@ print_info "Verifying installation..."
 source "$TEST_ROOT/venv/bin/activate"
 
 # Check CLIs
-for cmd in task-dashboard automation-cli seo-cli seo-content-cli; do
+for cmd in task-dashboard pageseeds; do
     if which $cmd > /dev/null 2>&1; then
         print_success "$cmd available"
     else

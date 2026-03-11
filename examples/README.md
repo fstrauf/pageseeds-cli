@@ -22,8 +22,8 @@ Per-project configuration for Google Search Console integration.
 **Location:** `{target_repo}/.github/automation/manifest.json`
 
 Used by:
-- `automation-cli seo gsc-indexing-report`
-- `automation-cli seo gsc-page-context`
+- `pageseeds automation seo gsc-indexing-report`
+- `pageseeds automation seo gsc-page-context`
 
 ### `secrets.env`
 
@@ -50,7 +50,7 @@ API keys and credentials.
 
 3. For each project, bootstrap the automation workspace:
    ```bash
-   automation-cli repo init --to /path/to/your/project
+   pageseeds automation repo init --to /path/to/your/project
    ```
 
 4. (Optional) Add GSC manifest to projects using Google Search Console:

@@ -79,25 +79,25 @@ class LinkingRunner(TaskRunner):
                 f"TARGET ARTICLE ID: {article_id}",
                 "",
                 "STEPS:",
-                f"1. Load article {article_id} content: seo-content-cli --workspace-root .github/automation get-article-content --website-path . --article-id {article_id}",
-                f"2. Scan existing internal links: seo-content-cli --workspace-root .github/automation scan-internal-links --website-path .",
-                f"3. Generate linking plan: seo-content-cli --workspace-root .github/automation generate-linking-plan --website-path . --missing-only",
+                f"1. Load article {article_id} content: pageseeds content get-article-content --workspace-root .github/automation --website-path . --article-id {article_id}",
+                f"2. Scan existing internal links: pageseeds content scan-internal-links --workspace-root .github/automation --website-path .",
+                f"3. Generate linking plan: pageseeds content generate-linking-plan --workspace-root .github/automation --website-path . --missing-only",
                 "4. Identify which cluster this article belongs to",
                 "5. Add links TO this article from relevant existing articles",
                 "6. Add links FROM this article to relevant existing articles",
-                f"7. Use: seo-content-cli --workspace-root .github/automation add-article-links --website-path . --source-id <ID> --target-ids <ID1> <ID2>",
-                f"8. Update brief linking status: seo-content-cli --workspace-root .github/automation update-brief-linking-status --website-path .",
+                f"7. Use: pageseeds content add-article-links --workspace-root .github/automation --website-path . --source-id <ID> --target-ids <ID1> <ID2>",
+                f"8. Update brief linking status: pageseeds content update-brief-linking-status --workspace-root .github/automation --website-path .",
             ])
         else:
             prompt_parts.extend([
                 "STEPS (Full Site):",
-                f"1. Load all articles: seo-content-cli --workspace-root .github/automation articles-summary --website-path .",
-                f"2. Scan existing internal links: seo-content-cli --workspace-root .github/automation scan-internal-links --website-path .",
-                f"3. Generate linking plan: seo-content-cli --workspace-root .github/automation generate-linking-plan --website-path . --missing-only",
+                f"1. Load all articles: pageseeds content articles-summary --workspace-root .github/automation --website-path .",
+                f"2. Scan existing internal links: pageseeds content scan-internal-links --workspace-root .github/automation --website-path .",
+                f"3. Generate linking plan: pageseeds content generate-linking-plan --workspace-root .github/automation --website-path . --missing-only",
                 "4. Group articles by intent into clusters",
                 "5. Pick/update pillar articles for each cluster",
                 "6. Add missing hub-spoke and cross-cluster links",
-                f"7. Batch add links: seo-content-cli --workspace-root .github/automation batch-add-links --website-path .",
+                f"7. Batch add links: pageseeds content batch-add-links --workspace-root .github/automation --website-path .",
                 "8. Update content brief with cluster mapping",
             ])
         
@@ -107,7 +107,7 @@ class LinkingRunner(TaskRunner):
             "- Every article should link to its pillar (if support) or to supports (if pillar)",
             "- Add 2-4 cross-cluster links where topically relevant",
             "- Update the content brief linking checklist",
-            "- Use the seo-content-cli commands",
+            "- Use the pageseeds content commands",
         ])
         
         if brief_path.exists():

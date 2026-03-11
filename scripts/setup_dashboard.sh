@@ -60,17 +60,11 @@ echo ""
 
 # Install CLI packages
 echo "Installing CLI packages..."
-echo "  - automation-cli package"
+echo "  - Installing library packages (automation-cli, seo-cli, seo-content-cli)..."
 $PIP_CMD install -q -e "$PACKAGE_ROOT/packages/automation-cli"
-print_success "automation-cli package installed"
-
-echo "  - seo-cli package"
 $PIP_CMD install -q -e "$PACKAGE_ROOT/packages/seo-cli"
-print_success "seo-cli package installed"
-
-echo "  - seo-content-cli package"
 $PIP_CMD install -q -e "$PACKAGE_ROOT/packages/seo-content-cli"
-print_success "seo-content-cli package installed"
+print_success "Library packages installed"
 
 # Install dashboard
 echo ""
@@ -154,7 +148,7 @@ else
     ALL_GOOD=false
 fi
 
-for cmd in automation-cli seo-cli seo-content-cli; do
+for cmd in pageseeds; do
     if command -v $cmd &> /dev/null; then
         print_success "$cmd command available"
     else

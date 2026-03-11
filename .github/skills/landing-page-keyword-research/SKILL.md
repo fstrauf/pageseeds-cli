@@ -20,8 +20,8 @@ Landing pages differ from blog articles:
 ## Hard Rules (No MCP Server)
 
 - Do NOT run ad-hoc terminal commands/scripts.
-- Use only the `seo-cli` and `seo-content-cli` commands listed in this skill.
-- Do not call any tool functions/integrations directly. Only run the `seo-cli|seo-content-cli ...` commands.
+- Use only the `pageseeds seo` and `pageseeds content` commands listed in this skill.
+- Do not call any tool functions/integrations directly. Only run the `pageseeds seo|pageseeds content ...` commands.
 
 ## Terminal Execution Rules (MANDATORY)
 
@@ -70,10 +70,10 @@ When evaluating keywords for landing pages, prioritize:
 
 ```bash
 # Get current articles summary (to avoid duplication)
-seo-content-cli --workspace-root automation articles-summary --website-path .
+pageseeds content --workspace-root automation articles-summary --website-path .
 
 # Research keywords for landing page themes
-seo-content-cli --workspace-root automation research-keywords \
+pageseeds content --workspace-root automation research-keywords \
   --website-path . \
   --themes 'theme1' 'theme2' 'theme3' \
   --country us \
@@ -86,7 +86,7 @@ seo-content-cli --workspace-root automation research-keywords \
 ### Individual Keyword Check
 
 ```bash
-seo-cli keyword-difficulty --keyword '<keyword>' --country us
+pageseeds seo difficulty --keyword '<keyword>' --country us
 ```
 
 ## Workflow
@@ -126,7 +126,7 @@ Based on product positioning, create themes targeting commercial intent:
 Run `research-keywords` with landing page criteria:
 
 ```bash
-seo-content-cli --workspace-root automation research-keywords \
+pageseeds content --workspace-root automation research-keywords \
   --website-path . \
   --themes '[competitor] alternative' '[use case] software' 'best [category] tools' \
   --country us \

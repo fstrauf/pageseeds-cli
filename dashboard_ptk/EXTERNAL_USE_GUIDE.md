@@ -10,12 +10,12 @@
 
 ```bash
 # From the repo you want to use GSC in
-pip install /path/to/automation/packages/automation-cli
+pip install /path/to/automation/packages/pageseeds
 ```
 
 Or with `uv`:
 ```bash
-uv pip install /path/to/automation/packages/automation-cli
+uv pip install /path/to/automation/packages/pageseeds
 ```
 
 ### 2. Set Up Credentials
@@ -58,17 +58,17 @@ Create `automation/manifest.json`:
 ### List Available GSC Sites
 
 ```bash
-automation-cli seo gsc-indexing-report --list-sites
+pageseeds automation seo gsc-indexing-report --list-sites
 ```
 
 ### Run Full Indexing Report
 
 ```bash
 # With manifest
-automation-cli seo gsc-indexing-report --manifest automation/manifest.json
+pageseeds automation seo gsc-indexing-report --manifest automation/manifest.json
 
 # Or explicit parameters
-automation-cli seo gsc-indexing-report \
+pageseeds automation seo gsc-indexing-report \
   --site sc-domain:example.com \
   --sitemap-url https://example.com/sitemap.xml \
   --limit 200 \
@@ -78,7 +78,7 @@ automation-cli seo gsc-indexing-report \
 ### Inspect Specific URLs
 
 ```bash
-automation-cli seo gsc-indexing-report \
+pageseeds automation seo gsc-indexing-report \
   --site sc-domain:example.com \
   --urls-file urls_to_check.txt \
   --limit 50
@@ -87,7 +87,7 @@ automation-cli seo gsc-indexing-report \
 ### Get Page-Specific Context
 
 ```bash
-automation-cli seo gsc-page-context \
+pageseeds automation seo gsc-page-context \
   --site sc-domain:example.com \
   --url https://example.com/specific-page
 ```
@@ -225,7 +225,7 @@ def run_gsc_report(
     """Run GSC indexing report and return path to action queue."""
     
     cmd = [
-        "automation-cli", "seo", "gsc-indexing-report",
+        "pageseeds", "automation", "seo", "gsc-indexing-report",
         "--site", site,
         "--sitemap-url", sitemap_url,
         "--limit", str(limit),
@@ -260,7 +260,7 @@ SITE="sc-domain:example.com"
 SITEMAP="https://example.com/sitemap.xml"
 
 echo "Running GSC report..."
-automation-cli seo gsc-indexing-report \
+pageseeds automation seo gsc-indexing-report \
   --site "$SITE" \
   --sitemap-url "$SITEMAP" \
   --limit 500 \
@@ -450,5 +450,5 @@ Check `manifest.json` has correct `url` and `gsc_site` values.
 ## Source
 
 - Tool code: `automation/tools/seo_help/gsc_indexing_report.py`
-- CLI wrapper: `automation/packages/automation-cli/src/automation_mcp/cli.py`
+- CLI wrapper: `automation/packages/pageseeds/src/pageseeds/cli.py`
 - Full docs: `automation/dashboard_ptk/GUIDE.md`

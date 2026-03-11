@@ -22,7 +22,7 @@ fi
 echo "✓ Python 3 found"
 
 # Check CLIs
-for cli in automation-cli seo-cli seo-content-cli; do
+for cli in pageseeds; do
     if command -v $cli &> /dev/null; then
         echo "✓ $cli found"
     else

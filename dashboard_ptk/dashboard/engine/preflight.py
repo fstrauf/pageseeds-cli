@@ -289,7 +289,7 @@ class ProjectPreflight:
                 "warning",
                 "reddit_auth",
                 "Could not validate Reddit auth status (auto-post may fail).",
-                (result.stderr or result.stdout or "Check automation-cli reddit auth-status").strip(),
+                (result.stderr or result.stdout or "Check pageseeds reddit auth-status").strip(),
             )
             return
 
@@ -299,7 +299,7 @@ class ProjectPreflight:
                 "warning",
                 "reddit_auth",
                 "Could not parse reddit auth-status output.",
-                "Run `automation-cli reddit auth-status` manually to inspect output.",
+                "Run `pageseeds reddit auth-status` manually to inspect output.",
             )
             return
 

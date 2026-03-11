@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test suite for keyword research functionality."""
+"""Test suite for keyword research functionality (using unified pageseeds CLI)."""
 
 import json
 import subprocess
@@ -8,26 +8,26 @@ import tempfile
 from pathlib import Path
 
 def test_seo_cli_available():
-    """Test that seo-cli is available and working."""
-    print("\n[TEST] Checking seo-cli availability...")
+    """Test that pageseeds SEO commands are available."""
+    print("\n[TEST] Checking pageseeds SEO availability...")
     result = subprocess.run(
-        ['seo-cli', '--help'],
+        ['pageseeds', 'seo', '--help'],
         capture_output=True,
         text=True,
         timeout=10
     )
     if result.returncode == 0:
-        print("  ✓ seo-cli is available")
+        print("  ✓ pageseeds seo is available")
         return True
     else:
-        print("  ✗ seo-cli not found or not working")
+        print("  ✗ pageseeds seo not found or not working")
         return False
 
 def test_keyword_generator():
-    """Test keyword-generator command."""
-    print("\n[TEST] Testing keyword-generator...")
+    """Test seo keywords command."""
+    print("\n[TEST] Testing pageseeds seo keywords...")
     result = subprocess.run(
-        ['seo-cli', 'keyword-generator', '--keyword', 'options trading', '--country', 'us'],
+        ['pageseeds', 'seo', 'keywords', '--keyword', 'options trading', '--country', 'us'],
         capture_output=True,
         text=True,
         timeout=30
@@ -49,8 +49,8 @@ def test_keyword_generator():
         return False
 
 def test_batch_keyword_difficulty():
-    """Test batch-keyword-difficulty command."""
-    print("\n[TEST] Testing batch-keyword-difficulty...")
+    """Test seo batch-difficulty command."""
+    print("\n[TEST] Testing pageseeds seo batch-difficulty...")
     
     # Create temp file with keywords
     with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
@@ -59,7 +59,7 @@ def test_batch_keyword_difficulty():
         keywords_file = f.name
     
     result = subprocess.run(
-        ['seo-cli', 'batch-keyword-difficulty', '--keywords-file', keywords_file, '--country', 'us'],
+        ['pageseeds', 'seo', 'batch-difficulty', '--keywords-file', keywords_file, '--country', 'us'],
         capture_output=True,
         text=True,
         timeout=60
@@ -94,8 +94,8 @@ def test_instructions_file():
     
     content = instr_path.read_text()
     checks = [
-        ('seo-cli keyword-generator', 'keyword-generator command'),
-        ('seo-cli batch-keyword-difficulty', 'batch-keyword-difficulty command'),
+        ('pageseeds seo keywords', 'seo keywords command'),
+        ('pageseeds seo batch-difficulty', 'seo batch-difficulty command'),
         ('seed_keywords', 'seed_keywords field'),
         ('keyword_candidates', 'keyword_candidates field'),
     ]
@@ -115,7 +115,7 @@ def test_ai_can_run_cli():
     print("\n[TEST] Testing AI CLI execution...")
     
     prompt = """Run this command and show me the result:
-seo-cli keyword-generator --keyword "test keyword" --country us
+pageseeds seo keywords --keyword "test keyword" --country us
 
 Output only the JSON result in a ```json code block."""
     

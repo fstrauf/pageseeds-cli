@@ -54,14 +54,38 @@ pageseeds
 
 ## What Gets Installed?
 
-The install script adds these commands to your PATH:
+The install script adds a single `pageseeds` command to your PATH that provides:
 
-| Command | Purpose |
-|---------|---------|
-| `pageseeds` | Interactive task dashboard (main entrypoint) |
-| `seo-cli` | SEO research tools (keywords, traffic, backlinks) |
-| `seo-content-cli` | Content lifecycle management |
-| `automation-cli` | Repo sync, Reddit tools, geo lookup |
+| Subcommand | Purpose |
+|------------|---------|
+| `pageseeds` (no args) | Interactive task dashboard |
+| `pageseeds version` | Check version and available updates |
+| `pageseeds seo` | SEO research tools (keywords, backlinks, traffic) |
+| `pageseeds content` | Content lifecycle management |
+| `pageseeds automation` | Repo sync, workflow management |
+| `pageseeds reddit` | Reddit opportunity management |
+| `pageseeds geo` | Geo/place enrichment |
+
+## Version Check
+
+Check if PageSeeds is up to date:
+
+```bash
+pageseeds version        # Check main CLI version
+pageseeds version --all  # Check all component versions
+```
+
+### Private Repositories
+
+If your repository is private, set a GitHub token to enable version checking:
+
+```bash
+export GITHUB_TOKEN=your-github-token-here
+# or
+export GH_TOKEN=your-github-token-here
+```
+
+Then run the version check as normal.
 
 ## Configuration
 
@@ -86,7 +110,7 @@ Create `~/.config/automation/projects.json` to define your websites:
 Each target repository needs an automation workspace. Bootstrap it:
 
 ```bash
-automation-cli repo init --to /path/to/target/repo
+pageseeds automation repo init --to /path/to/target/repo
 ```
 
 This creates `.github/automation/` with:
@@ -100,26 +124,45 @@ This creates `.github/automation/` with:
 
 ```bash
 # Generate keyword ideas
-seo-cli keyword-generator --keyword "expense tracking" --country us
+pageseeds seo keywords --keyword "expense tracking" --country us
 
 # Check keyword difficulty
-seo-cli keyword-difficulty --keyword "best expense tracker" --country us
+pageseeds seo difficulty --keyword "best expense tracker" --country us
+
+# Get backlinks for a domain
+pageseeds seo backlinks --domain example.com
 
 # Get traffic estimates
-seo-cli traffic --domain example.com
+pageseeds seo traffic --domain-or-url example.com
 ```
 
 ### Content Operations
 
 ```bash
 # Validate content for issues
-seo-content-cli validate-content --website-path general/my_site
+pageseeds content validate --website-path general/my_site
 
 # Clean content (fix dates, remove duplicate headings)
-seo-content-cli clean-content --website-path general/my_site
+pageseeds content clean --website-path general/my_site
+
+# Analyze content dates
+pageseeds content analyze-dates --website-path general/my_site
 
 # View articles summary
-seo-content-cli articles-summary --website-path general/my_site
+pageseeds content articles-summary --workspace-root /path/to/workspace
+```
+
+### Reddit Engagement
+
+```bash
+# List pending opportunities
+pageseeds reddit pending --project my_project
+
+# List posted opportunities (last 30 days)
+pageseeds reddit posted --project my_project
+
+# View project stats
+pageseeds reddit stats --project my_project
 ```
 
 ### Dashboard Tasks
@@ -135,14 +178,16 @@ The `pageseeds` dashboard provides:
 
 ```
 pageseeds-cli/
+├── dashboard_ptk/          # Unified CLI + Interactive TUI dashboard
 ├── packages/
-│   ├── automation-cli/     # Repo management, Reddit, geo tools
-│   ├── seo-cli/            # Ahrefs SEO research
-│   └── seo-content-cli/    # Content lifecycle management
-├── dashboard_ptk/          # Interactive TUI dashboard
+│   ├── automation-cli/     # Library: Repo management, Reddit, geo
+│   ├── seo-cli/            # Library: Ahrefs SEO research
+│   └── seo-content-cli/    # Library: Content lifecycle management
 ├── scripts/                # Setup and utility scripts
 └── .github/skills/         # Workflow knowledge base
 ```
+
+The `pageseeds` command is a unified CLI that includes all functionality. The packages under `packages/` are installed as libraries that `pageseeds` imports.
 
 ## Development
 

@@ -8,7 +8,7 @@ agent: agent
 Run the cross-site PostHog product insights workflow.
 
 - Skill (source of truth): `.github/skills/posthog-product-insights/SKILL.md`
-- Run deterministic pull via `automation-cli posthog report --repo-root . --refresh`
+- Run deterministic pull via `pageseeds automation posthog report --repo-root . --refresh`
 - Use existing repo/env configuration; do not create new `.env` or manifest files during normal execution.
 - Script auto-discovers sites from `general/*/manifest.json` files with PostHog config.
 - Script output:
