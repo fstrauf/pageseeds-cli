@@ -40,6 +40,8 @@ class Task:
     created_at: Optional[str] = None
     started_at: Optional[str] = None
     completed_at: Optional[str] = None
+    finished_at: Optional[str] = None  # Set when task completes (success or failure)
+    failed_at: Optional[str] = None     # Set specifically when task fails
     action_command: Optional[str] = None
     metadata: dict = field(default_factory=dict)  # Custom task parameters
     workflow_key: Optional[str] = None
@@ -101,6 +103,8 @@ class Task:
             created_at=data.get("created_at"),
             started_at=data.get("started_at"),
             completed_at=data.get("completed_at"),
+            finished_at=data.get("finished_at"),
+            failed_at=data.get("failed_at"),
             action_command=data.get("action", {}).get("command") if isinstance(data.get("action"), dict) else None,
             metadata=data.get("metadata", {}),
             workflow_key=data.get("workflow_key") or data.get("type"),
@@ -137,6 +141,8 @@ class Task:
             "created_at": self.created_at,
             "started_at": self.started_at,
             "completed_at": self.completed_at,
+            "finished_at": self.finished_at,
+            "failed_at": self.failed_at,
             "action": {"command": self.action_command} if self.action_command else None,
             "metadata": self.metadata,
             "workflow_key": self.workflow_key or self.type,
@@ -156,6 +162,7 @@ class Task:
             "in_progress": "◐",
             "review": "◑",
             "done": "✓",
-            "blocked": "✗"
+            "failed": "✗",
+            "blocked": "⊘"
         }
         return f"{icons.get(self.status, '?')} {self.status}"

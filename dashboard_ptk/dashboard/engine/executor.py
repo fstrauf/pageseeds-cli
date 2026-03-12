@@ -40,7 +40,9 @@ class ExecutionEngine:
         handler = self._find_handler(task)
         if not handler:
             error_msg = f"No workflow handler found for task type: {getattr(task, 'type', 'unknown')}"
+            task.status = "failed"
             task.notes = error_msg
+            task.failed_at = datetime.now().isoformat()
             self.task_list.save()
             return False, error_msg
 
@@ -66,7 +68,9 @@ class ExecutionEngine:
                 norm = self.normalizers.normalize(step.params.get("normalizer_id", "passthrough_markdown"), latest_raw, norm_context)
                 if not norm.success:
                     error_msg = f"Normalization failed ({step.name}): {norm.error}"
+                    task.status = "failed"
                     task.notes = error_msg
+                    task.failed_at = datetime.now().isoformat()
                     self.task_list.save()
                     return False, error_msg
 
@@ -102,10 +106,16 @@ class ExecutionEngine:
         # Return specific error message or generic one
         if not all_success:
             error_msg = last_error or "Task execution failed"
+            task.status = "failed"
             task.notes = error_msg
+            task.failed_at = datetime.now().isoformat()
             self.task_list.save()
             return False, error_msg
         
+        # Success - mark as done
+        task.status = "done"
+        task.finished_at = datetime.now().isoformat()
+        self.task_list.save()
         return True, ""
 
 

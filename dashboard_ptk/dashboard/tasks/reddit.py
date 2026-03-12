@@ -649,7 +649,10 @@ DO NOT save the file until ALL opportunities have:
                 console.print("\n[dim]For now, use option 1 to copy the reply and post manually.[/dim]")
                 return False
 
-            auth_ok, auth_error = self._verify_reddit_auth_via_cli(token)
+            # Get all Reddit credentials (token + client_id + client_secret)
+            reddit_creds = self._get_reddit_credentials()
+            
+            auth_ok, auth_error = self._verify_reddit_auth_via_cli(reddit_creds)
             if not auth_ok:
                 console.print("[red]Cannot auto-post: Reddit auth validation failed.[/red]")
                 if auth_error:
@@ -675,7 +678,7 @@ DO NOT save the file until ALL opportunities have:
             
             success, stdout, stderr = self.run_cli_command(
                 cmd,
-                env_overrides={"REDDIT_REFRESH_TOKEN": token} if token else None,
+                env_overrides=reddit_creds if reddit_creds else None,
             )
             
             if stdout:
@@ -785,7 +788,10 @@ DO NOT save the file until ALL opportunities have:
         if not auth_ready:
             return False, "Auto-posting not available: REDDIT_REFRESH_TOKEN missing/empty."
 
-        auth_ok, auth_error = self._verify_reddit_auth_via_cli(token)
+        # Get all Reddit credentials (token + client_id + client_secret)
+        reddit_creds = self._get_reddit_credentials()
+        
+        auth_ok, auth_error = self._verify_reddit_auth_via_cli(reddit_creds)
         if not auth_ok:
             return False, f"Reddit auth validation failed: {auth_error}"
 
@@ -793,7 +799,7 @@ DO NOT save the file until ALL opportunities have:
             post_id=post_id,
             subreddit=subreddit,
             text=task.notes,
-            token=token,
+            creds=reddit_creds,
         )
         if not submit_ok:
             return False, error or "Reddit API submission failed."
@@ -889,16 +895,38 @@ DO NOT save the file until ALL opportunities have:
     def _resolve_reddit_refresh_token(self) -> tuple[str | None, str | None, bool]:
         """Resolve token from env + standard env files without mutating process environment."""
         return self._env_resolver().resolve_key("REDDIT_REFRESH_TOKEN")
+    
+    def _get_reddit_credentials(self) -> dict[str, str]:
+        """Get all Reddit credentials (token, client_id, client_secret) for CLI calls."""
+        resolver = self._env_resolver()
+        creds: dict[str, str] = {}
+        
+        # Get refresh token
+        token, _, _ = resolver.resolve_key("REDDIT_REFRESH_TOKEN")
+        if token:
+            creds["REDDIT_REFRESH_TOKEN"] = token
+        
+        # Get client ID (required for posting)
+        client_id, _, _ = resolver.resolve_key("REDDIT_CLIENT_ID")
+        if client_id:
+            creds["REDDIT_CLIENT_ID"] = client_id
+        
+        # Get client secret (required for posting)
+        client_secret, _, _ = resolver.resolve_key("REDDIT_CLIENT_SECRET")
+        if client_secret:
+            creds["REDDIT_CLIENT_SECRET"] = client_secret
+        
+        return creds
 
-    def _verify_reddit_auth_via_cli(self, token: str | None) -> tuple[bool, str | None]:
-        """Run CLI auth-status to validate token before attempting to post."""
-        if not token:
+    def _verify_reddit_auth_via_cli(self, creds: dict[str, str] | None) -> tuple[bool, str | None]:
+        """Run CLI auth-status to validate credentials before attempting to post."""
+        if not creds or not creds.get("REDDIT_REFRESH_TOKEN"):
             return False, "Missing REDDIT_REFRESH_TOKEN."
 
         success, stdout, stderr = self.run_cli_command(
             ["reddit", "auth-status"],
             timeout=45,
-            env_overrides={"REDDIT_REFRESH_TOKEN": token},
+            env_overrides=creds,
         )
         if not success:
             return False, (stderr or stdout or "Failed to run reddit auth-status").strip()
@@ -924,12 +952,12 @@ DO NOT save the file until ALL opportunities have:
         post_id: str,
         subreddit: str,
         text: str,
-        token: str | None,
+        creds: dict[str, str] | None,
     ) -> tuple[bool, dict, str | None]:
         """Submit reddit comment via CLI and parse JSON result."""
         success, stdout, stderr = self.run_cli_command(
             ["reddit", "submit-comment", "--post-id", post_id, "--text", text],
-            env_overrides={"REDDIT_REFRESH_TOKEN": token} if token else None,
+            env_overrides=creds if creds else None,
         )
         if not success:
             return False, {}, (stderr or stdout or "CLI command failed").strip()

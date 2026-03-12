@@ -98,7 +98,9 @@ class TaskList:
         self.save()
     
     def get_completed_ids(self) -> set:
-        return {t.id for t in self.tasks if t.status == "done"}
+        # Both done and failed tasks are considered "completed" for dependency unlocking
+        # Failed tasks should not block dependent tasks indefinitely
+        return {t.id for t in self.tasks if t.status in ("done", "failed")}
     
     def get_by_phase(self, phase: str) -> list[Task]:
         return [t for t in self.tasks if t.phase == phase]

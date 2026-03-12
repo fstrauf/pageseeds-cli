@@ -167,6 +167,10 @@ class BatchProcessor:
             if not self.dashboard.executor:
                 console.print("[red]Execution engine is not initialized[/red]")
                 success = False
+                # Mark as failed since we couldn't even attempt execution
+                task.status = "failed"
+                task.notes = "Execution engine not initialized"
+                task.failed_at = datetime.now().isoformat()
             else:
                 # Pass execution context to runners for batch-specific defaults
                 if self.config.task_type_defaults:
@@ -177,18 +181,29 @@ class BatchProcessor:
                 result = self.dashboard.executor.execute_task(task)
                 # Handle both old bool return and new tuple return
                 if isinstance(result, tuple):
-                    success, _ = result
+                    success, error_msg = result
                 else:
                     success = result
+                    error_msg = "Task execution failed" if not success else ""
                 
                 # Clear execution context after task completion
                 if self.config.task_type_defaults:
                     for runner in self.dashboard.runners.values():
                         if hasattr(runner, 'set_execution_context'):
                             runner.set_execution_context({})
+                
+                # Executor now handles status updates, but ensure failed tasks have timestamp
+                if not success and not task.failed_at:
+                    task.failed_at = datetime.now().isoformat()
+                    if not task.notes:
+                        task.notes = error_msg or "Task execution failed"
         except Exception as e:
             console.print(f"[red]Error executing task: {e}[/red]")
             success = False
+            # Mark task as failed on exception
+            task.status = "failed"
+            task.notes = str(e)[:500]  # Truncate long error messages
+            task.failed_at = datetime.now().isoformat()
         
         self.task_list.save()
         return success
