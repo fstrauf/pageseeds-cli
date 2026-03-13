@@ -49,6 +49,34 @@ class ContentCleaner:
     def __init__(self, workspace_root: str):
         self.workspace_root = workspace_root
     
+    def _get_content_dir(self, full_path: str) -> str:
+        """Get content directory, checking workspace config if needed."""
+        content_dir = os.path.join(full_path, "content")
+        
+        # If content dir exists (as folder or symlink), use it
+        if os.path.isdir(content_dir):
+            return content_dir
+        
+        # Otherwise, check for workspace config
+        workspace_cfg_path = Path(self.workspace_root) / "seo_workspace.json"
+        if workspace_cfg_path.exists():
+            try:
+                cfg = json.loads(workspace_cfg_path.read_text(encoding='utf-8'))
+                cfg_content_dir = str(cfg.get("content_dir", "")).strip()
+                if cfg_content_dir:
+                    candidate = Path(cfg_content_dir).expanduser()
+                    if not candidate.is_absolute():
+                        candidate = (Path(self.workspace_root).parent / candidate).resolve()
+                    else:
+                        candidate = candidate.resolve()
+                    if candidate.exists():
+                        return str(candidate)
+            except Exception:
+                pass
+        
+        # Fall back to default
+        return content_dir
+    
     def clean_website(self, website_path: str, dry_run: bool = False) -> CleaningResult:
         """
         Clean content in a website folder.
@@ -62,7 +90,7 @@ class ContentCleaner:
         """
         full_path = os.path.join(self.workspace_root, website_path)
         articles_json_path = os.path.join(full_path, "articles.json")
-        content_dir = os.path.join(full_path, "content")
+        content_dir = self._get_content_dir(full_path)
         
         if not os.path.exists(articles_json_path):
             raise FileNotFoundError(f"articles.json not found at {articles_json_path}")
