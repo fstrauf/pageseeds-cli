@@ -129,7 +129,7 @@ cd /path/to/target/repo
 mkdir -p .github/automation/reddit
 
 # Required files:
-# - .github/automation/{project}.md      (website description)
+# - .github/automation/project_summary.md      (website description)
 # - .github/automation/reddit_config.md  (subreddits, queries, rules)
 # - .github/automation/brandvoice.md     (tone guidelines)
 ```
@@ -166,7 +166,7 @@ See [GUIDE.md](GUIDE.md#required-configuration-target-repo) for examples.
 | Articles registry | `automation/general/{site}/articles.json` |
 | Content files | `{repo}/src/blog/posts/` (from registry) |
 | GSC artifacts | `{repo}/.github/automation/artifacts/` |
-| Reddit config | `{repo}/.github/automation/{project}.md` |
+| Reddit config | `{repo}/.github/automation/project_summary.md` |
 | Reddit config | `{repo}/.github/automation/reddit_config.md` |
 | Reddit config | `{repo}/.github/automation/brandvoice.md` |
 | Reddit history | `{repo}/.github/automation/reddit/_posted_history.json` |

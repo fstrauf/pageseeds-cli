@@ -174,7 +174,7 @@ mode_map = {
 - Drafts replies following brand voice and product mention rules
 - **Auto-creates**: `reddit_reply` tasks for each opportunity
 - Saves: `artifacts/reddit/search_{project}_{timestamp}.md`
-- **⚠️ Config required** (in target repo): `{project}.md`, `reddit_config.md`, `brandvoice.md`
+- **⚠️ Config required** (in target repo): `project_summary.md`, `reddit_config.md`, `brandvoice.md`
   - See [Reddit Task Management > Required Configuration](#required-configuration-target-repo)
 
 **`reddit_reply`** - Post reply to Reddit thread
@@ -973,7 +973,7 @@ Create these files in `{repo}/.github/automation/`:
 
 | File | Required | Purpose |
 |------|----------|---------|
-| `{project}.md` | ✅ Yes | Website/product description (e.g., `expense.md`, `coffee.md`) |
+| `project_summary.md` | ✅ Yes | Website/product description |
 | `reddit_config.md` | ✅ Yes | Seed subreddits, queries, product mention rules |
 | `brandvoice.md` | ✅ Yes | Tone and voice guidelines |
 | `reddit/_reply_guardrails.md` | Auto-created | Reply formatting rules (created on first run) |
@@ -1036,7 +1036,7 @@ This is NON-NEGOTIABLE and applies to all projects regardless of mention stance.
 ```bash
 cd /path/to/target/repo
 mkdir -p .github/automation/reddit
-# Create: .github/automation/{project}.md
+# Create: .github/automation/project_summary.md
 # Create: .github/automation/reddit_config.md
 # Create: .github/automation/brandvoice.md
 ```

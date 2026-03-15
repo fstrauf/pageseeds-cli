@@ -134,7 +134,7 @@ class RedditRunner(TaskRunner):
         repo_root = Path(self.project.repo_root)
         automation_dir = repo_root / ".github" / "automation"
         config_files = [
-            automation_dir / f"{self.project.website_id}.md",
+            automation_dir / "project_summary.md",
             automation_dir / "reddit_config.md",
             automation_dir / "brandvoice.md",
             automation_dir / "reddit" / "_reply_guardrails.md",
@@ -165,12 +165,12 @@ class RedditRunner(TaskRunner):
         prompt = f"""You are a Reddit marketing researcher. Find opportunities for {self.project.website_id} and save results to a markdown file.
 
 CONFIG FILES TO READ (from repo's .github/automation/ directory):
-1. {self.project.website_id}.md - Website/product description
+1. project_summary.md - Website/product description
 2. reddit_config.md - Project-specific: product name, mention stance, trigger topics, excluded subreddits
 3. brandvoice.md - Tone and voice guidelines
 
 YOUR TASK:
-1. Read {self.project.website_id}.md to understand the product/website
+1. Read project_summary.md to understand the product/website
 2. Read reddit_config.md to get product name, mention stance, and excluded subreddits
 3. Read brandvoice.md for tone guidelines
 4. EXTRACT AND STATE: Before searching, write down:
