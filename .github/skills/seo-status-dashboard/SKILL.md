@@ -25,13 +25,13 @@ Provide a quick, repo-local view so you can decide what to do next:
 
 ## Tooling (No MCP Server)
 
-Use `pageseeds content` only:
+Use `seo-content-cli` only:
 
 ```bash
-pageseeds content --workspace-root automation articles-summary --website-path .
-pageseeds content --workspace-root automation articles-index --website-path . --status published
-pageseeds content --workspace-root automation articles-index --website-path . --status draft
-pageseeds content --workspace-root automation articles-index --website-path . --status ready_to_publish
+seo-content-cli --workspace-root automation articles-summary --website-path .
+seo-content-cli --workspace-root automation articles-index --website-path . --status published
+seo-content-cli --workspace-root automation articles-index --website-path . --status draft
+seo-content-cli --workspace-root automation articles-index --website-path . --status ready_to_publish
 ```
 
 Disallowed:

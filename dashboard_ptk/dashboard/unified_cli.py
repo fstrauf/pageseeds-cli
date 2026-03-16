@@ -835,6 +835,26 @@ def _cmd_automation_posthog_action_queue(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def _cmd_automation_seo_crawl_404s(args: argparse.Namespace) -> None:
+    """Crawl website for 404 errors."""
+    try:
+        from automation_mcp.cli import _seo_crawl_404s
+        _seo_crawl_404s(args)
+    except ImportError:
+        print("Error: automation-mcp not installed. Run: uv tool install -e packages/automation-cli", file=sys.stderr)
+        sys.exit(1)
+
+
+def _cmd_automation_seo_gsc_redirect_analysis(args: argparse.Namespace) -> None:
+    """Process GSC Page with redirect CSV."""
+    try:
+        from automation_mcp.cli import _seo_gsc_redirect_analysis
+        _seo_gsc_redirect_analysis(args)
+    except ImportError:
+        print("Error: automation-mcp not installed. Run: uv tool install -e packages/automation-cli", file=sys.stderr)
+        sys.exit(1)
+
+
 # =============================================================================
 # Reddit Commands (delegates to automation-cli)
 # =============================================================================
@@ -1384,6 +1404,20 @@ Examples:
     auto_seo_targets.add_argument("--field", choices=["url", "file", "basename", "reason_code", "coverageState", "title", "url_to_file"], default="basename")
     auto_seo_targets.add_argument("--unique", action="store_true")
     auto_seo_targets.set_defaults(func=_cmd_automation_seo_gsc_remediation_targets)
+    
+    # automation seo crawl-404s
+    auto_seo_crawl = auto_seo_sub.add_parser("crawl-404s", help="Crawl website to find 404 errors (fully automated)")
+    auto_seo_crawl.add_argument("--repo-root", default="")
+    auto_seo_crawl.add_argument("--site", default="", help="Site URL (e.g., https://www.example.com)")
+    auto_seo_crawl.add_argument("--sitemap-url", default="", help="Sitemap URL (auto-detected from manifest if not provided)")
+    auto_seo_crawl.add_argument("--manifest", default="", help="Optional manifest.json path")
+    auto_seo_crawl.add_argument("--out-dir", default="", help="Override output directory")
+    auto_seo_crawl.add_argument("--max-pages", type=int, default=500, help="Maximum pages to crawl (default: 500)")
+    auto_seo_crawl.add_argument("--max-depth", type=int, default=3, help="Maximum crawl depth (default: 3)")
+    auto_seo_crawl.add_argument("--workers", type=int, default=5, help="Number of concurrent workers (default: 5)")
+    auto_seo_crawl.add_argument("--delay-ms", type=int, default=100, help="Delay between requests in ms (default: 100)")
+    auto_seo_crawl.add_argument("--timeout", type=int, default=30, help="Request timeout in seconds (default: 30)")
+    auto_seo_crawl.set_defaults(func=_cmd_automation_seo_crawl_404s)
     
     # automation skills
     auto_skills = automation_sub.add_parser("skills", help="Sync workflow skills")

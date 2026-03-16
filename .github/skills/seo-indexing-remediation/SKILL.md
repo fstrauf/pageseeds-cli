@@ -27,7 +27,7 @@ Step 7 execution path is CLI-first and deterministic:
 
 - Use only `pageseeds automation seo ...` commands for queue selection and scan context.
 - Do not call `seo-content-mcp` or other MCP servers for Step 7 discovery/routing.
-- If Step 6 artifacts are missing, stop and request/re-run Step 6 (`gsc-indexing-report`) instead of using alternate discovery paths.
+- If Step 6 artifacts are missing, stop and request/re-run Step 6 (`pageseeds automation seo gsc-indexing-report`) instead of using alternate discovery paths.
 
 ## Workflow
 

@@ -133,7 +133,7 @@ class TaskGenerator:
         
         # Check if there's an active (non-done) task of this type
         has_active = any(
-            t.type == task_type and t.status not in ("done", "cancelled")
+            t.type == task_type and t.status not in ("done", "cancelled", "failed")
             for t in tasks
         )
         

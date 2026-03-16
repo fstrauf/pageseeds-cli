@@ -67,7 +67,7 @@ Create findings in this format:
 ## Example Prompt
 
 Given:
-- Project: coffee (CoffeeBlog)
+- Project: coffee (BrewedLate)
 - Existing articles: 27 articles covering subscriptions, pricing, origins
 - Target: Find 5 new keyword opportunities
 

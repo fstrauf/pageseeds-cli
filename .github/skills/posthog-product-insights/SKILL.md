@@ -76,20 +76,20 @@ Use the repo script (standard library only):
 Primary usage (multi-site, auto-discovers manifests):
 
 ```bash
-pageseeds automation posthog report --repo-root . --refresh
+pageseeds posthog report --repo-root . --refresh
 ```
 
 Single-site usage (one-off):
 
 ```bash
-pageseeds automation posthog report --repo-root . --project-id <id> --api-key-env POSTHOG --refresh
+pageseeds posthog report --repo-root . --project-id <id> --api-key-env POSTHOG --refresh
 ```
 
 Project discovery (when setting `project_id` values):
 
 ```bash
-pageseeds automation posthog list-projects --repo-root . --api-key-env POSTHOG
-pageseeds automation posthog list-dashboards --repo-root . --project-id <id> --api-key-env POSTHOG
+pageseeds posthog list-projects --repo-root . --api-key-env POSTHOG
+pageseeds posthog list-dashboards --repo-root . --project-id <id> --api-key-env POSTHOG
 ```
 
 Tip: `--env-file` is optional. Secrets are auto-resolved from environment, machine-local secrets file, and repo/automation fallbacks.
@@ -114,13 +114,13 @@ Run:
 
 ```bash
 # Multi-site (auto-discovers manifests):
-pageseeds automation posthog report --repo-root . --refresh
+pageseeds posthog report --repo-root . --refresh
 
 # Single-site:
-pageseeds automation posthog report --repo-root . --project-id <id> --api-key-env POSTHOG --refresh
+pageseeds posthog report --repo-root . --project-id <id> --api-key-env POSTHOG --refresh
 
 # Disable incomplete data detection (use partial current-day data)
-pageseeds automation posthog report --repo-root . --no-skip-incomplete
+pageseeds posthog report --repo-root . --no-skip-incomplete
 ```
 
 Data contract:
@@ -213,25 +213,25 @@ Use the `view` command to extract specific fields from the latest insights JSON 
 
 ```bash
 # View situations detected by rules
-pageseeds automation posthog view --field situations
+pageseeds posthog view --field situations
 
 # View action candidates  
-pageseeds automation posthog view --field action_candidates
+pageseeds posthog view --field action_candidates
 
 # View insights with latest values
-pageseeds automation posthog view --field insights
+pageseeds posthog view --field insights
 
 # View page traffic
-pageseeds automation posthog view --field page_traffic
+pageseeds posthog view --field page_traffic
 
 # View breakdown values (referring domains, browsers, etc.)
-pageseeds automation posthog view --field breakdowns
+pageseeds posthog view --field breakdowns
 
 # JSON output for programmatic use
-pageseeds automation posthog view --field situations --format json
+pageseeds posthog view --field situations --format json
 ```
 
-**Rule**: DO NOT write ad-hoc Python/jq to parse JSON files. Use `pageseeds automation posthog view`.
+**Rule**: DO NOT write ad-hoc Python/jq to parse JSON files. Use `pageseeds posthog view`.
 
 ### Step 7: Produce Deliverables
 
@@ -262,7 +262,7 @@ Per-site machine-readable deliverable (`<site_id>_<date>_insights.json`) include
 Then build the deterministic cross-site action queue:
 
 ```bash
-pageseeds automation posthog action-queue --repo-root . --write-md
+pageseeds posthog action-queue --repo-root . --write-md
 ```
 
 This writes:

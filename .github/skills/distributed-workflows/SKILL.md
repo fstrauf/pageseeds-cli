@@ -10,7 +10,7 @@ description: Run automation workflows from the repo that owns the content by ins
 Eliminate the "sync articles into automation repo, edit, sync back" loop by:
 
 - keeping content edits inside the target repo
-- keeping tooling iteration centralized in the automation repo
+- keeping tooling iteration centralized in the pageseeds CLI
 
 ## Prompts vs Skills (Non-Negotiable)
 
@@ -24,16 +24,11 @@ Eliminate the "sync articles into automation repo, edit, sync back" loop by:
 Install tools in editable mode so changes in the automation repo apply immediately everywhere.
 
 ```bash
-uv tool install -e /path/to/automation/packages/pageseeds
-uv tool install -e /path/to/automation/packages/pageseeds
-uv tool install -e /path/to/automation/packages/pageseeds
-uv tool update-shell
+pip install pageseeds
 ```
 
 After install, any repo can run:
 
-- `pageseeds content ...`
-- `pageseeds seo ...`
 - `pageseeds ...`
 
 ## Secrets (One-Time Per Machine)
@@ -42,29 +37,28 @@ Some workflows call external services (e.g. Ahrefs via CapSolver) and require AP
 
 Preferred: set real environment variables in your shell startup.
 
-Fallbacks supported by `pageseeds seo` (no per-repo copying required):
+Fallbacks supported by `pageseeds` (no per-repo copying required):
 
-1) `~/.config/automation/secrets.env` (format: `CAPSOLVER_API_KEY=...`)
-2) `/path/to/automation/.env` (automation repo root) as a best-effort fallback
+1) `~/.config/pageseeds/secrets.env` (format: `CAPSOLVER_API_KEY=...`)
 
 ## Deploy Skills/Prompts Into Another Repo (Optional)
 
 If you want to author skills in the automation repo and then copy them into a target repo, prefer the payload installer:
 
 ```bash
-pageseeds automation repo init --to /path/to/target/repo --bundle seo
+pageseeds repo init --to /path/to/target/repo --bundle seo
 ```
 
 For PostHog workflows:
 
 ```bash
-pageseeds automation repo init --to /path/to/target/repo --bundle posthog
+pageseeds repo init --to /path/to/target/repo --bundle posthog
 ```
 
 After the initial install, updates preserve the installed bundles via the stamp file:
 
 ```bash
-pageseeds automation repo update --to /path/to/target/repo
+pageseeds repo update --to /path/to/target/repo
 ```
 
 If you want to change bundles explicitly, pass `--bundle` again.
@@ -74,19 +68,19 @@ Fallback: raw copier (`skills sync`) is intentionally dumb (no deletes, no trans
 Dry-run:
 
 ```bash
-pageseeds automation skills sync --to /path/to/target/repo --dry-run
+pageseeds skills sync --to /path/to/target/repo --dry-run
 ```
 
 Apply (overwrite existing files):
 
 ```bash
-pageseeds automation skills sync --to /path/to/target/repo --force
+pageseeds skills sync --to /path/to/target/repo --force
 ```
 
 To limit the sync to specific skills:
 
 ```bash
-pageseeds automation skills sync \
+pageseeds skills sync \
   --to /path/to/target/repo --include seo-indexing-diagnostics --include seo-indexing-remediation --force
 ```
 
@@ -108,8 +102,8 @@ pageseeds automation seo init \
   --force
 ```
 
-Then run `pageseeds content` against it:
+Then run `pageseeds` against it:
 
 ```bash
-pageseeds content --workspace-root automation articles-summary --website-path .
+pageseeds automation seo articles-summary --website-path .
 ```

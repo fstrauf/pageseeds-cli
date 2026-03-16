@@ -32,13 +32,12 @@ Credentials:
   1) `--service-account-path`
   2) `GOOGLE_APPLICATION_CREDENTIALS` (when it points to a service-account JSON)
   3) `~/.config/automation/secrets.env` (`GSC_SERVICE_ACCOUNT_PATH` or `GOOGLE_APPLICATION_CREDENTIALS`)
-  4) `/path/to/automation/.env` (`GSC_SERVICE_ACCOUNT_PATH` or `GOOGLE_APPLICATION_CREDENTIALS`)
-  5) a single service-account JSON detected in `/path/to/automation/*.json`
+  4) `~/.config/pageseeds/secrets.env` (`GSC_SERVICE_ACCOUNT_PATH` or `GOOGLE_APPLICATION_CREDENTIALS`)
 - Optional OAuth mode: `--oauth-client-secrets`, `GSC_REPORT_OAUTH_CLIENT_SECRETS`, or matching keys in the same env files
 
 ## Tooling
 
-Use the centralized CLI wrapper (tool code lives in the automation repo):
+Use the centralized CLI wrapper:
 
 - `pageseeds automation seo gsc-indexing-report`
 

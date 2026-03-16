@@ -32,6 +32,9 @@ from .cli_gsc import (
     cmd_gsc_indexing_report,
     cmd_gsc_site_scan,
     cmd_gsc_page_context,
+    cmd_gsc_coverage_404s,
+    cmd_crawl_404s,
+    cmd_gsc_redirect_analysis,
 )
 
 
@@ -724,6 +727,33 @@ def _seo_gsc_watch(args: argparse.Namespace) -> None:
     # TODO: Implement full watch functionality in cli_gsc module
     print("GSC Watch: Using site scan as base (watch features to be implemented)", file=sys.stderr)
     exit_code = cmd_gsc_site_scan(args)
+    raise SystemExit(exit_code)
+
+
+def _seo_gsc_coverage_404s(args: argparse.Namespace) -> None:
+    """
+    Process GSC Coverage Drilldown CSV for 404 errors.
+    Uses internal GSC module (no external scripts).
+    """
+    exit_code = cmd_gsc_coverage_404s(args)
+    raise SystemExit(exit_code)
+
+
+def _seo_gsc_redirect_analysis(args: argparse.Namespace) -> None:
+    """
+    Process GSC Page with redirect CSV for redirect issues.
+    Uses internal GSC module (no external scripts).
+    """
+    exit_code = cmd_gsc_redirect_analysis(args)
+    raise SystemExit(exit_code)
+
+
+def _seo_crawl_404s(args: argparse.Namespace) -> None:
+    """
+    Crawl website to find 404 errors (fully automated).
+    Uses internal crawler module (no external scripts).
+    """
+    exit_code = cmd_crawl_404s(args)
     raise SystemExit(exit_code)
 
 
@@ -2077,6 +2107,44 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     seo_gsc_targets.add_argument("--unique", action="store_true", help="Deduplicate output values in --format lines mode.")
     seo_gsc_targets.set_defaults(func=_seo_gsc_remediation_targets)
+
+    seo_coverage_404s = seo_sub.add_parser(
+        "gsc-coverage-404s",
+        help="Process GSC Coverage Drilldown CSV for 404 errors",
+    )
+    seo_coverage_404s.add_argument("--repo-root", default="", help="Repo root (default: cwd)")
+    seo_coverage_404s.add_argument("--csv-file", required=True, help="Path to Coverage Drilldown CSV export")
+    seo_coverage_404s.add_argument("--site", default="", help="Site URL (e.g., https://www.example.com)")
+    seo_coverage_404s.add_argument("--manifest", default="", help="Optional manifest.json path (uses 'url' field if --site not provided)")
+    seo_coverage_404s.add_argument("--out-dir", default="", help="Override output directory (default: .github/automation/output/gsc_coverage_404s)")
+    seo_coverage_404s.set_defaults(func=_seo_gsc_coverage_404s)
+
+    seo_redirect_analysis = seo_sub.add_parser(
+        "gsc-redirect-analysis",
+        help="Process GSC Page with redirect CSV for redirect issues",
+    )
+    seo_redirect_analysis.add_argument("--repo-root", default="", help="Repo root (default: cwd)")
+    seo_redirect_analysis.add_argument("--csv-file", required=True, help="Path to GSC Page with redirect CSV export")
+    seo_redirect_analysis.add_argument("--site", default="", help="Site URL")
+    seo_redirect_analysis.add_argument("--manifest", default="", help="Optional manifest.json path")
+    seo_redirect_analysis.add_argument("--out-dir", default="", help="Override output directory")
+    seo_redirect_analysis.set_defaults(func=_seo_gsc_redirect_analysis)
+
+    seo_crawl_404s = seo_sub.add_parser(
+        "crawl-404s",
+        help="Crawl website to find 404 errors (fully automated)",
+    )
+    seo_crawl_404s.add_argument("--repo-root", default="", help="Repo root (default: cwd)")
+    seo_crawl_404s.add_argument("--site", default="", help="Site URL (e.g., https://www.example.com)")
+    seo_crawl_404s.add_argument("--sitemap-url", default="", help="Sitemap URL (auto-detected from manifest if not provided)")
+    seo_crawl_404s.add_argument("--manifest", default="", help="Optional manifest.json path")
+    seo_crawl_404s.add_argument("--out-dir", default="", help="Override output directory (default: .github/automation/output/crawl_404s)")
+    seo_crawl_404s.add_argument("--max-pages", type=int, default=500, help="Maximum pages to crawl (default: 500)")
+    seo_crawl_404s.add_argument("--max-depth", type=int, default=3, help="Maximum crawl depth (default: 3)")
+    seo_crawl_404s.add_argument("--workers", type=int, default=5, help="Number of concurrent workers (default: 5)")
+    seo_crawl_404s.add_argument("--delay-ms", type=int, default=100, help="Delay between requests in ms (default: 100)")
+    seo_crawl_404s.add_argument("--timeout", type=int, default=30, help="Request timeout in seconds (default: 30)")
+    seo_crawl_404s.set_defaults(func=_seo_crawl_404s)
 
     posthog = subparsers.add_parser("posthog", help="PostHog analytics pull + action queue helpers")
     posthog_sub = posthog.add_subparsers(dest="posthog_command", required=True)

@@ -28,25 +28,19 @@ Run this before publishing when you want a clean sync/gap check without date opt
 Preview (safe default):
 
 ```bash
-pageseeds content --workspace-root automation sync-and-validate --website-path . --compact
+seo-content-cli --workspace-root automation sync-and-validate --website-path . --compact
 ```
 
 Apply date sync + validate:
 
 ```bash
-pageseeds content --workspace-root automation sync-and-validate --website-path . --apply-sync --compact
+seo-content-cli --workspace-root automation sync-and-validate --website-path . --apply-sync --compact
 ```
 
-If `pageseeds content` is not available in PATH, run via `uv` from the automation repo:
+If `pageseeds` is not available in PATH, install it via pip:
 
 ```bash
-uv run --directory /path/to/automation/packages/pageseeds \
-  pageseeds content --workspace-root automation sync-and-validate --website-path . --compact
-```
-
-```bash
-uv run --directory /path/to/automation/packages/pageseeds \
-  pageseeds content --workspace-root automation sync-and-validate --website-path . --apply-sync --compact
+pip install pageseeds
 ```
 
 ## Decision Rules

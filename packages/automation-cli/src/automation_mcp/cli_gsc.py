@@ -26,6 +26,7 @@ from .seo.gsc import (
     priority_for_record,
     generate_indexing_report,
     generate_site_scan_report,
+    generate_coverage_404_report,
 )
 
 
@@ -51,7 +52,18 @@ def _load_urls_from_sitemap(sitemap_url: str) -> list[str]:
     import xml.etree.ElementTree as ET
     
     try:
-        with urllib.request.urlopen(sitemap_url, timeout=30) as response:
+        # Create request with proper headers to avoid 403 from Cloudflare/WAF
+        req = urllib.request.Request(
+            sitemap_url,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Accept-Encoding': 'gzip, deflate',
+                'Connection': 'keep-alive',
+            }
+        )
+        with urllib.request.urlopen(req, timeout=30) as response:
             data = response.read()
             
         # Handle gzip
@@ -398,4 +410,201 @@ def cmd_gsc_page_context(args: Namespace) -> int:
         
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+
+def cmd_gsc_coverage_404s(args: Namespace) -> int:
+    """Process GSC Coverage Drilldown CSV for 404 errors.
+    
+    This command takes a CSV export from GSC Coverage > Drilldown (Not found)
+    and generates an action queue with classified 404 errors.
+    """
+    repo_root = Path(args.repo_root).expanduser().resolve() if args.repo_root else Path.cwd().resolve()
+    out_dir = Path(args.out_dir).expanduser() if args.out_dir else (repo_root / ".github" / "automation" / "output" / "gsc_coverage_404s")
+    out_dir = out_dir if out_dir.is_absolute() else (repo_root / out_dir).resolve()
+    
+    csv_path = Path(args.csv_file).expanduser().resolve()
+    if not csv_path.exists():
+        print(f"Error: CSV file not found: {csv_path}", file=sys.stderr)
+        return 1
+    
+    # Determine site URL
+    site_url = args.site
+    if not site_url:
+        manifest_path = Path(args.manifest) if args.manifest else repo_root / ".github" / "automation" / "manifest.json"
+        manifest = _load_manifest(manifest_path)
+        site_url = manifest.get("url", "")
+        if not site_url:
+            print("Error: No site URL specified. Use --site or ensure manifest.json has 'url'", file=sys.stderr)
+            return 1
+    
+    try:
+        print(f"Processing Coverage 404 CSV: {csv_path}", file=sys.stderr)
+        print(f"Site: {site_url}", file=sys.stderr)
+        
+        report_meta = generate_coverage_404_report(
+            csv_path=csv_path,
+            site_url=site_url,
+            out_dir=out_dir,
+        )
+        
+        print(f"\n✓ Report generated:", file=sys.stderr)
+        print(f"  Total 404s: {report_meta['total_404s']}", file=sys.stderr)
+        print(f"  Categories: {', '.join(report_meta['categories'])}", file=sys.stderr)
+        print(f"  Action queue: {report_meta['action_queue']}", file=sys.stderr)
+        print(f"  Fix plan: {report_meta['fix_plan']}", file=sys.stderr)
+        
+        _print_json(report_meta)
+        return 0
+        
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return 1
+
+
+def cmd_gsc_redirect_analysis(args: Namespace) -> int:
+    """Process GSC "Page with redirect" CSV for redirect issues.
+    
+    Analyzes redirect issues and creates fix tasks.
+    """
+    repo_root = Path(args.repo_root).expanduser().resolve() if args.repo_root else Path.cwd().resolve()
+    out_dir = Path(args.out_dir).expanduser() if args.out_dir else (repo_root / ".github" / "automation" / "output" / "gsc_redirects")
+    out_dir = out_dir if out_dir.is_absolute() else (repo_root / out_dir).resolve()
+    
+    csv_path = Path(args.csv_file).expanduser().resolve()
+    if not csv_path.exists():
+        print(f"Error: CSV file not found: {csv_path}", file=sys.stderr)
+        return 1
+    
+    # Determine site URL
+    site_url = args.site
+    if not site_url:
+        manifest_path = Path(args.manifest) if args.manifest else repo_root / ".github" / "automation" / "manifest.json"
+        manifest = _load_manifest(manifest_path)
+        site_url = manifest.get("url", "")
+        if not site_url:
+            print("Error: No site URL specified. Use --site or ensure manifest.json has 'url'", file=sys.stderr)
+            return 1
+    
+    # Load sitemap if available
+    sitemap_urls: set[str] | None = None
+    sitemap_path = repo_root / ".github" / "automation" / "sitemap.xml"
+    if not sitemap_path.exists():
+        sitemap_path = repo_root / "public" / "sitemap.xml"
+    if sitemap_path.exists():
+        try:
+            urls = _load_urls_from_sitemap(f"file://{sitemap_path}")
+            sitemap_urls = set(urls)
+            print(f"Loaded {len(sitemap_urls)} URLs from sitemap", file=sys.stderr)
+        except Exception:
+            pass
+    
+    try:
+        from .seo.gsc.redirects import generate_redirect_report
+        
+        print(f"Processing redirect CSV: {csv_path}", file=sys.stderr)
+        print(f"Site: {site_url}", file=sys.stderr)
+        
+        report_meta = generate_redirect_report(
+            csv_path=csv_path,
+            site_url=site_url,
+            out_dir=out_dir,
+            sitemap_urls=sitemap_urls,
+        )
+        
+        print(f"\n✓ Report generated:", file=sys.stderr)
+        print(f"  Total redirects: {report_meta['total_redirects']}", file=sys.stderr)
+        print(f"  In sitemap (CRITICAL): {report_meta['in_sitemap_count']}", file=sys.stderr)
+        print(f"  Redirect types: {', '.join(report_meta['redirect_types'])}", file=sys.stderr)
+        print(f"  Action queue: {report_meta['action_queue']}", file=sys.stderr)
+        print(f"  Fix plan: {report_meta['fix_plan']}", file=sys.stderr)
+        
+        _print_json(report_meta)
+        return 0
+        
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return 1
+
+
+def cmd_crawl_404s(args: Namespace) -> int:
+    """Crawl website to find 404 errors.
+    
+    Crawls sitemap and internal links to find broken links (404s).
+    This is fully automated - no GSC API or manual exports needed.
+    """
+    repo_root = Path(args.repo_root).expanduser().resolve() if args.repo_root else Path.cwd().resolve()
+    out_dir = Path(args.out_dir).expanduser() if args.out_dir else (repo_root / ".github" / "automation" / "output" / "crawl_404s")
+    out_dir = out_dir if out_dir.is_absolute() else (repo_root / out_dir).resolve()
+    
+    # Determine site URL
+    site_url = args.site
+    sitemap_url = args.sitemap_url
+    
+    if not site_url:
+        manifest_path = Path(args.manifest) if args.manifest else repo_root / ".github" / "automation" / "manifest.json"
+        manifest = _load_manifest(manifest_path)
+        site_url = manifest.get("url", "")
+        if not site_url:
+            print("Error: No site URL specified. Use --site or ensure manifest.json has 'url'", file=sys.stderr)
+            return 1
+        if not sitemap_url:
+            sitemap_url = manifest.get("sitemap") or f"{site_url.rstrip('/')}/sitemap.xml"
+    
+    if not sitemap_url:
+        sitemap_url = f"{site_url.rstrip('/')}/sitemap.xml"
+    
+    try:
+        from .seo.crawler import CrawlConfig, crawl_site, generate_crawl_404_report
+        
+        print(f"Crawling site: {site_url}", file=sys.stderr)
+        print(f"Sitemap: {sitemap_url}", file=sys.stderr)
+        print(f"Max pages: {args.max_pages}, Max depth: {args.max_depth}", file=sys.stderr)
+        
+        # Fetch sitemap
+        print("Fetching sitemap...", file=sys.stderr)
+        sitemap_urls = _load_urls_from_sitemap(sitemap_url)
+        print(f"Found {len(sitemap_urls)} URLs in sitemap", file=sys.stderr)
+        
+        # Configure crawl
+        config = CrawlConfig(
+            max_pages=args.max_pages,
+            max_depth=args.max_depth,
+            workers=args.workers,
+            delay_ms=args.delay_ms,
+            timeout_seconds=args.timeout,
+        )
+        
+        # Crawl
+        print("Crawling...", file=sys.stderr)
+        results = crawl_site(
+            start_url=site_url,
+            sitemap_urls=sitemap_urls,
+            config=config,
+        )
+        
+        # Generate report
+        report_meta = generate_crawl_404_report(
+            results=results,
+            site_url=site_url,
+            out_dir=out_dir,
+        )
+        
+        print(f"\n✓ Crawl complete:", file=sys.stderr)
+        print(f"  Pages crawled: {report_meta['total_crawled']}", file=sys.stderr)
+        print(f"  404s found: {report_meta['total_404s']}", file=sys.stderr)
+        print(f"  Action queue: {report_meta['action_queue']}", file=sys.stderr)
+        print(f"  Fix plan: {report_meta['fix_plan']}", file=sys.stderr)
+        
+        _print_json(report_meta)
+        return 0
+        
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
         return 1

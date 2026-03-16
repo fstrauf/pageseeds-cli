@@ -299,21 +299,18 @@ class DashboardTaskActionsMixin:
 
         if task_type in ["gsc", "posthog"]:
             # Check for existing tasks
-            existing_collect = any(t.type == f"collect_{task_type}" and t.status not in ["done", "cancelled"] for t in self.task_list.tasks)
-            existing_investigate = any(t.type == f"investigate_{task_type}" and t.status not in ["done", "cancelled"] for t in self.task_list.tasks)
+            existing_collect = any(t.type == f"collect_{task_type}" and t.status not in ["done", "cancelled", "failed"] for t in self.task_list.tasks)
 
             if existing_collect:
                 console.print(f"[yellow]Active {task_type.upper()} collection task already exists[/yellow]")
             else:
                 col_task = self.task_list.create_collection_task(task_type)
                 created.append(col_task.title)
-
-                if not existing_investigate:
-                    inv_task = self.task_list.create_investigation_task(task_type, col_task)
-                    created.append(inv_task.title)
+                # Note: Investigation task will be created by the collection task on success
+                # This prevents orphaned investigation tasks when collection fails
 
         elif task_type == "keywords":
-            existing = any(t.type == "research_keywords" and t.status not in ["done", "cancelled"] for t in self.task_list.tasks)
+            existing = any(t.type == "research_keywords" and t.status not in ["done", "cancelled", "failed"] for t in self.task_list.tasks)
             if existing:
                 console.print("[yellow]Active keyword research task already exists[/yellow]")
             else:
@@ -321,7 +318,7 @@ class DashboardTaskActionsMixin:
                 created.append(res_task.title)
 
         elif task_type == "reddit":
-            existing = any(t.type == "reddit_opportunity_search" and t.status not in ["done", "cancelled"] for t in self.task_list.tasks)
+            existing = any(t.type == "reddit_opportunity_search" and t.status not in ["done", "cancelled", "failed"] for t in self.task_list.tasks)
             if existing:
                 console.print("[yellow]Active Reddit search task already exists[/yellow]")
             else:
@@ -329,7 +326,7 @@ class DashboardTaskActionsMixin:
                 created.append(reddit_task.title)
 
         elif task_type == "landing_pages":
-            existing = any(t.type == "research_landing_pages" and t.status not in ["done", "cancelled"] for t in self.task_list.tasks)
+            existing = any(t.type == "research_landing_pages" and t.status not in ["done", "cancelled", "failed"] for t in self.task_list.tasks)
             if existing:
                 console.print("[yellow]Active landing page research task already exists[/yellow]")
             else:
@@ -337,7 +334,7 @@ class DashboardTaskActionsMixin:
                 created.append(lp_task.title)
 
         elif task_type == "performance":
-            existing = any(t.type == "analyze_gsc_performance" and t.status not in ["done", "cancelled"] for t in self.task_list.tasks)
+            existing = any(t.type == "analyze_gsc_performance" and t.status not in ["done", "cancelled", "failed"] for t in self.task_list.tasks)
             if existing:
                 console.print("[yellow]Active GSC performance analysis task already exists[/yellow]")
             else:
@@ -363,7 +360,7 @@ class DashboardTaskActionsMixin:
             input("\nPress Enter...")
             return
 
-        existing = any(t.type == "custom_keyword_research" and t.status not in ["done", "cancelled"] for t in self.task_list.tasks)
+        existing = any(t.type == "custom_keyword_research" and t.status not in ["done", "cancelled", "failed"] for t in self.task_list.tasks)
         if existing:
             console.print("[yellow]Active custom keyword research task already exists[/yellow]")
             input("\nPress Enter...")
@@ -425,23 +422,18 @@ class DashboardTaskActionsMixin:
 
         for source in sources:
             if source in ["gsc", "posthog"]:
-                existing_collect = any(t.type == f"collect_{source}" and t.status not in ["done", "cancelled"] for t in self.task_list.tasks)
-                existing_investigate = any(t.type == f"investigate_{source}" and t.status not in ["done", "cancelled"] for t in self.task_list.tasks)
+                existing_collect = any(t.type == f"collect_{source}" and t.status not in ["done", "cancelled", "failed"] for t in self.task_list.tasks)
 
                 if existing_collect:
                     console.print("[dim]Active collection task already exists[/dim]")
                 else:
                     col_task = self.task_list.create_collection_task(source)
                     console.print(f"[dim]Created: {col_task.title}[/dim]")
-
-                    if not existing_investigate:
-                        inv_task = self.task_list.create_investigation_task(source, col_task)
-                        console.print(f"[dim]Created: {inv_task.title}[/dim]")
-                    else:
-                        console.print("[dim]Active investigation task already exists[/dim]")
+                    # Note: Investigation task will be created by the collection task on success
+                    # This prevents orphaned investigation tasks when collection fails
 
             elif source == "keywords":
-                existing = any(t.type == "research_keywords" and t.status not in ["done", "cancelled"] for t in self.task_list.tasks)
+                existing = any(t.type == "research_keywords" and t.status not in ["done", "cancelled", "failed"] for t in self.task_list.tasks)
                 if existing:
                     console.print("[dim]Active keyword research task already exists[/dim]")
                 else:
@@ -450,7 +442,7 @@ class DashboardTaskActionsMixin:
 
             elif source == "reddit":
                 # Only check for non-completed tasks (allow new search if previous is done)
-                existing = any(t.type == "reddit_opportunity_search" and t.status not in ["done", "cancelled"] for t in self.task_list.tasks)
+                existing = any(t.type == "reddit_opportunity_search" and t.status not in ["done", "cancelled", "failed"] for t in self.task_list.tasks)
                 if existing:
                     console.print("[dim]Active Reddit search task already exists (wait for it to complete)[/dim]")
                 else:
@@ -458,7 +450,7 @@ class DashboardTaskActionsMixin:
                     console.print(f"[dim]Created: {reddit_task.title}[/dim]")
 
             elif source == "landing_pages":
-                existing = any(t.type == "research_landing_pages" and t.status not in ["done", "cancelled"] for t in self.task_list.tasks)
+                existing = any(t.type == "research_landing_pages" and t.status not in ["done", "cancelled", "failed"] for t in self.task_list.tasks)
                 if existing:
                     console.print("[dim]Active landing page research task already exists[/dim]")
                 else:

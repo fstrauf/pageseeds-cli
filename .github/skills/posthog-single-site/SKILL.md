@@ -22,7 +22,7 @@ Repo-local workspace:
 ### Option 1: Command-line flags (simplest)
 
 ```bash
-pageseeds automation posthog report \
+pageseeds posthog report \
   --repo-root . \
   --project-id 12345 \
   --api-key-env POSTHOG_API_KEY \
@@ -45,7 +45,7 @@ Create `automation/posthog_config.json`:
 
 Then run:
 ```bash
-pageseeds automation posthog report --repo-root . --refresh
+pageseeds posthog report --repo-root . --refresh
 ```
 
 The CLI will auto-detect `automation/posthog_config.json` if present.
@@ -56,19 +56,19 @@ Use the centralized CLI wrapper:
 
 ```bash
 # List your PostHog projects (to find project_id)
-pageseeds automation posthog list-projects --repo-root . --api-key-env POSTHOG_API_KEY
+pageseeds posthog list-projects --repo-root . --api-key-env POSTHOG_API_KEY
 
 # List dashboards for a project
-pageseeds automation posthog list-dashboards --repo-root . --project-id 12345 --api-key-env POSTHOG_API_KEY
+pageseeds posthog list-dashboards --repo-root . --project-id 12345 --api-key-env POSTHOG_API_KEY
 
 # Pull analytics report
-pageseeds automation posthog report --repo-root . --project-id 12345 --api-key-env POSTHOG_API_KEY --refresh
+pageseeds posthog report --repo-root . --project-id 12345 --api-key-env POSTHOG_API_KEY --refresh
 
 # Generate action queue from insights
-pageseeds automation posthog action-queue --repo-root . --write-md
+pageseeds posthog action-queue --repo-root . --write-md
 
 # Disable incomplete data detection (if you want current day's partial data)
-pageseeds automation posthog report --repo-root . --no-skip-incomplete
+pageseeds posthog report --repo-root . --no-skip-incomplete
 ```
 
 ## Authentication
@@ -76,9 +76,8 @@ pageseeds automation posthog report --repo-root . --no-skip-incomplete
 PostHog API keys are auto-resolved from (in order):
 
 1. Environment variables (already set in shell)
-2. `~/.config/automation/secrets.env` (preferred machine-local location)
-3. `/path/to/automation/.env` (automation repo fallback)
-4. Repo-local `.env` in current working directory
+2. `~/.config/pageseeds/secrets.env` (preferred machine-local location)
+3. Repo-local `.env` in current working directory
 
 Required: Environment variable containing your PostHog API key (e.g., `POSTHOG_API_KEY`)
 
@@ -90,7 +89,7 @@ Ensure you have:
 - PostHog project ID (numeric)
 - PostHog API key (personal API key, not the public project key)
 
-Set the API key in `~/.config/automation/secrets.env`:
+Set the API key in `~/.config/pageseeds/secrets.env`:
 ```
 POSTHOG_API_KEY=phx_...
 ```
@@ -99,10 +98,10 @@ POSTHOG_API_KEY=phx_...
 
 ```bash
 # List projects to confirm access
-pageseeds automation posthog list-projects --repo-root . --api-key-env POSTHOG_API_KEY
+pageseeds posthog list-projects --repo-root . --api-key-env POSTHOG_API_KEY
 
 # List dashboards to find which to pull
-pageseeds automation posthog list-dashboards --repo-root . --project-id <ID> --api-key-env POSTHOG_API_KEY
+pageseeds posthog list-dashboards --repo-root . --project-id <ID> --api-key-env POSTHOG_API_KEY
 ```
 
 ### Step 3: Configure (optional but recommended)
@@ -121,12 +120,12 @@ Create `automation/posthog_config.json` with your project details:
 
 With config file:
 ```bash
-pageseeds automation posthog report --repo-root . --refresh
+pageseeds posthog report --repo-root . --refresh
 ```
 
 Or with flags:
 ```bash
-pageseeds automation posthog report \
+pageseeds posthog report \
   --repo-root . \
   --project-id 12345 \
   --api-key-env POSTHOG_API_KEY \
@@ -148,22 +147,22 @@ Use the `view` command to extract specific fields without writing Python/jq:
 
 ```bash
 # View situations detected by rules
-pageseeds automation posthog view --field situations
+pageseeds posthog view --field situations
 
 # View action candidates
-pageseeds automation posthog view --field action_candidates
+pageseeds posthog view --field action_candidates
 
 # View insights with values
-pageseeds automation posthog view --field insights
+pageseeds posthog view --field insights
 
 # View page traffic
-pageseeds automation posthog view --field page_traffic
+pageseeds posthog view --field page_traffic
 
 # View breakdown values (referring domains, browsers, etc.)
-pageseeds automation posthog view --field breakdowns
+pageseeds posthog view --field breakdowns
 
 # JSON format for programmatic use
-pageseeds automation posthog view --field situations --format json
+pageseeds posthog view --field situations --format json
 ```
 
 **DO NOT** write ad-hoc Python scripts to parse the JSON files. Use the `view` command.
@@ -171,7 +170,7 @@ pageseeds automation posthog view --field situations --format json
 ### Step 7: Build action queue
 
 ```bash
-pageseeds automation posthog action-queue --repo-root . --write-md
+pageseeds posthog action-queue --repo-root . --write-md
 ```
 
 ## Guardrails

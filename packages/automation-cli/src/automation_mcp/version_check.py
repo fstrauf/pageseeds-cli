@@ -8,8 +8,13 @@ from __future__ import annotations
 
 import os
 import sys
-import tomllib
 from dataclasses import dataclass
+
+# tomllib is Python 3.11+, use tomli for older versions
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib
 from pathlib import Path
 from urllib.request import urlopen, Request
 from urllib.error import URLError

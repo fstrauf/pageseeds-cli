@@ -1,6 +1,6 @@
 ---
 name: seo-content-creation
-description: Run SEO Step 2 (content creation) repo-locally: pick next high-priority task, plan metadata with `pageseeds content`, write MDX, update automation/articles.json, and mark brief tasks complete.
+description: Run SEO Step 2 (content creation) repo-locally: pick next high-priority task, plan metadata with `seo-content-cli`, write MDX, update automation/articles.json, and mark brief tasks complete.
 ---
 
 # SEO Content Creation
@@ -13,7 +13,7 @@ This step is NOT “create one article”. This step is “work the backlog”.
 
 You MUST repeat the workflow until there are **no remaining HIGH PRIORITY tasks** in the content brief.
 
-If the brief has no structured tasks and `pageseeds content get-next-content-task` falls back to registry drafts, you MUST repeat until there are **zero** `draft` articles remaining.
+If the brief has no structured tasks and `seo-content-cli get-next-content-task` falls back to registry drafts, you MUST repeat until there are **zero** `draft` articles remaining.
 
 You are an SEO content writer. This workflow creates high-priority articles from the content brief using the brand voice and tracking system.
 
@@ -39,21 +39,21 @@ Repo-local SEO workspace:
 
 **FILE FORMAT:** All article content files MUST be saved with `.mdx` extension (not `.md`).
 
-Use `pageseeds content` (no MCP server):
+Use `seo-content-cli` (no MCP server):
 
-- State: `pageseeds content --workspace-root automation articles-summary --website-path .`
-- Draft listing: `pageseeds content --workspace-root automation articles-index --website-path . --status draft`
-- Next task: `pageseeds content --workspace-root automation get-next-content-task --website-path . --priority 'HIGH PRIORITY'`
-- Plan metadata: `pageseeds content --workspace-root automation plan-content-article --website-path . --task-id '<Task ID>' --extension mdx`
-- Upsert article + complete brief task: `pageseeds content --workspace-root automation publish-article-and-complete-task --website-path . --task-id '<Task ID>' --from-plan`
+- State: `seo-content-cli --workspace-root automation articles-summary --website-path .`
+- Draft listing: `seo-content-cli --workspace-root automation articles-index --website-path . --status draft`
+- Next task: `seo-content-cli --workspace-root automation get-next-content-task --website-path . --priority 'HIGH PRIORITY'`
+- Plan metadata: `seo-content-cli --workspace-root automation plan-content-article --website-path . --task-id '<Task ID>' --extension mdx`
+- Upsert article + complete brief task: `seo-content-cli --workspace-root automation publish-article-and-complete-task --website-path . --task-id '<Task ID>' --from-plan`
 
 Optional workflow tools:
 
-Repo-local note: `pageseeds content ops ...` commands require a multi-site registry and are intentionally not part of the repo-local setup. Deploy via your repo’s normal pipeline.
+Repo-local note: `seo-content-cli ops ...` commands require a multi-site registry and are intentionally not part of the repo-local setup. Deploy via your repo’s normal pipeline.
 
 Disallowed:
 
-- Ad-hoc terminal/Python/jq to inspect or bulk-edit `articles.json` (use `pageseeds content` instead)
+- Ad-hoc terminal/Python/jq to inspect or bulk-edit `articles.json` (use `seo-content-cli` instead)
 - Writing `cat > /tmp/*.json`, heredocs, or any temp file construction
 - Manually constructing JSON blobs for `--article-json`
 - Backgrounding commands with `&`
@@ -63,22 +63,22 @@ Disallowed:
 
 ### 1) Read Context
 
-- Call `pageseeds content --workspace-root automation articles-summary --website-path .`.
+- Call `seo-content-cli --workspace-root automation articles-summary --website-path .`.
 - Read your brand voice doc if present (optional).
 
 Optional (recommended for visibility):
 
-- `pageseeds content --workspace-root automation articles-index --website-path . --status draft`
-- `pageseeds content --workspace-root automation articles-index --website-path . --status ready_to_publish`
+- `seo-content-cli --workspace-root automation articles-index --website-path . --status draft`
+- `seo-content-cli --workspace-root automation articles-index --website-path . --status ready_to_publish`
 
 ### 2) Select Article to Create
 
-- Call `pageseeds content --workspace-root automation get-next-content-task --website-path . --priority 'HIGH PRIORITY'`.
-- Plan it with `pageseeds content --workspace-root automation plan-content-article --website-path . --task-id '<Task ID>' --extension mdx`.
+- Call `seo-content-cli --workspace-root automation get-next-content-task --website-path . --priority 'HIGH PRIORITY'`.
+- Plan it with `seo-content-cli --workspace-root automation plan-content-article --website-path . --task-id '<Task ID>' --extension mdx`.
 
-If the brief is not structured, `pageseeds content get-next-content-task` will fall back to the next draft article in `articles.json`.
+If the brief is not structured, `seo-content-cli get-next-content-task` will fall back to the next draft article in `articles.json`.
 
-If `pageseeds content get-next-content-task` fails with “No draft articles found in articles.json”, treat it as **STOP** (no structured tasks + no draft backlog). Do not invent tasks.
+If `seo-content-cli get-next-content-task` fails with “No draft articles found in articles.json”, treat it as **STOP** (no structured tasks + no draft backlog). Do not invent tasks.
 
 ### 3) Write Article (MDX)
 
@@ -106,11 +106,11 @@ Requirements:
 ### 4) Save File
 
 - Folder: `automation/content/`
-- Name: `{id}_{url_slug}.mdx` (from `pageseeds content plan-content-article`)
+- Name: `{id}_{url_slug}.mdx` (from `seo-content-cli plan-content-article`)
 
 ### 5) Update Registry + Brief
 
-Use `pageseeds content publish-article-and-complete-task --from-plan` to:
+Use `seo-content-cli publish-article-and-complete-task --from-plan` to:
 
 - Upsert the article into `articles.json`
 - Mark the corresponding content brief task as completed
@@ -119,7 +119,7 @@ Use `pageseeds content publish-article-and-complete-task --from-plan` to:
 Command:
 
 ```
-pageseeds content --workspace-root automation publish-article-and-complete-task \
+seo-content-cli --workspace-root automation publish-article-and-complete-task \
   --website-path . --task-id '<Task ID>' --from-plan
 ```
 
@@ -129,7 +129,7 @@ Default target status is `ready_to_publish` (not `published`).
 
 ### 6) Schedule Dates (Ready-to-Publish only)
 
-Repo-local note: scheduling via `pageseeds content ops schedule-apply` requires a multi-site registry. For repo-local workflows, use Step 5’s `fix-dates` after publishing to keep recent dates sane.
+Repo-local note: scheduling via `seo-content-cli ops schedule-apply` requires a multi-site registry. For repo-local workflows, use Step 5’s `fix-dates` after publishing to keep recent dates sane.
 
 ### 7) Deploy (Optional)
 
@@ -139,6 +139,6 @@ When ready to deploy, use the publishing/deployment skill (`seo-publishing-deplo
 
 After completing ONE article (file saved + `publish-article-and-complete-task` succeeded), you MUST loop:
 
-1) Call `pageseeds content get-next-content-task --priority 'HIGH PRIORITY'` again.
+1) Call `seo-content-cli get-next-content-task --priority 'HIGH PRIORITY'` again.
 2) If a next task is returned, plan → write → publish → complete task.
 3) Stop only when there are no remaining HIGH PRIORITY tasks, or when the CLI indicates there is no fallback draft backlog.

@@ -194,6 +194,12 @@ class CollectionRunner(TaskRunner):
         """Execute a collection task."""
         console.print(f"\n[bold]Running: {task.title}[/bold]\n")
         
+        # Handle specific task types directly
+        if task.type == "crawl_404s":
+            return self._collect_crawl_404s(task)
+        elif task.type == "gsc_redirect_analysis":
+            return self._collect_gsc_redirect_analysis(task)
+        
         # Parse source from task type (collect_gsc -> gsc)
         source = task.type.replace("collect_", "")
         
@@ -456,6 +462,398 @@ class CollectionRunner(TaskRunner):
             console.print(f"[dim]{escape(traceback.format_exc())}[/dim]")
             return False
     
+    def collect_coverage_404s(self, task: Task, csv_path: Path | None = None) -> bool:
+        """Process GSC Coverage Drilldown CSV for 404 errors."""
+        repo_root = Path(self.project.repo_root)
+        
+        # Find CSV file if not provided
+        if csv_path is None:
+            # Look for CSV in common locations
+            csv_candidates = [
+                repo_root / ".github" / "automation" / "coverage_404s.csv",
+                repo_root / "coverage_404s.csv",
+            ]
+            # Also check for any CSV in the artifacts dir
+            artifacts_dir = self.task_list.artifacts_dir
+            if artifacts_dir.exists():
+                csv_files = list(artifacts_dir.glob("*coverage*.csv"))
+                csv_candidates.extend(csv_files)
+            
+            for candidate in csv_candidates:
+                if candidate.exists():
+                    csv_path = candidate
+                    break
+        
+        if not csv_path or not csv_path.exists():
+            console.print("[yellow]No Coverage 404 CSV found.[/yellow]")
+            console.print("[dim]To process 404s, export the Coverage Drilldown (Not found) from GSC and save as:[/dim]")
+            console.print(f"[dim]  {repo_root}/.github/automation/coverage_404s.csv[/dim]")
+            return False
+        
+        # Load manifest for site URL
+        manifest_path = repo_root / ".github" / "automation" / "manifest.json"
+        site_url = ""
+        if manifest_path.exists():
+            try:
+                manifest = json.loads(manifest_path.read_text())
+                site_url = manifest.get("url", "")
+            except Exception:
+                pass
+        
+        if not site_url:
+            site_url = f"https://www.{self.project.website_id}.com"
+        
+        console.print(f"\n[bold]Processing Coverage 404 CSV:[/bold] {csv_path.name}")
+        console.print(f"[dim]Site: {site_url}[/dim]\n")
+        
+        try:
+            cmd = [
+                "seo", "gsc-coverage-404s",
+                "--repo-root", str(repo_root),
+                "--csv-file", str(csv_path),
+                "--site", site_url,
+                "--out-dir", str(self.task_list.artifacts_dir)
+            ]
+            
+            success, stdout, stderr = self.run_cli_command(cmd, timeout=60)
+            
+            if stdout:
+                lines = stdout.strip().split('\n')[-5:]
+                for line in lines:
+                    if line.strip():
+                        console.print(f"  {line}")
+            
+            if success:
+                # Find the generated action queue
+                action_queue_files = list(self.task_list.artifacts_dir.glob("coverage_404_*_action_queue.json"))
+                if action_queue_files:
+                    latest = max(action_queue_files, key=lambda p: p.stat().st_mtime)
+                    
+                    # Create tasks from coverage data
+                    tasks_created = self._create_tasks_from_coverage_404s(latest)
+                    
+                    console.print(f"\n[green]✓ Coverage 404 processing complete[/green]")
+                    console.print(f"[dim]Action queue: {latest.name}[/dim]")
+                    
+                    task.status = "done"
+                    task.completed_at = datetime.now().isoformat()
+                    self.task_list.save()
+                    return True
+                else:
+                    console.print("[yellow]No action queue generated[/yellow]")
+                    return False
+            else:
+                console.print(f"[red]✗ Coverage 404 processing failed[/red]")
+                if stderr:
+                    console.print(f"[dim]{stderr[-500:]}[/dim]")
+                return False
+                
+        except Exception as e:
+            console.print(f"[red]Error: {e}[/red]")
+            return False
+    
+    def _collect_crawl_404s(self, task: Task) -> bool:
+        """Run crawler to find 404 errors."""
+        repo_root = Path(self.project.repo_root)
+        
+        # Load manifest for site URL
+        manifest_path = repo_root / ".github" / "automation" / "manifest.json"
+        site_url = ""
+        sitemap_url = ""
+        
+        if manifest_path.exists():
+            try:
+                manifest = json.loads(manifest_path.read_text())
+                site_url = manifest.get("url", "")
+                sitemap_url = manifest.get("sitemap", "")
+            except Exception:
+                pass
+        
+        if not site_url:
+            site_url = f"https://www.{self.project.website_id}.com"
+        
+        console.print(f"\n[bold]Crawling for 404s:[/bold] {site_url}")
+        
+        try:
+            cmd = [
+                "seo", "crawl-404s",
+                "--repo-root", str(repo_root),
+                "--site", site_url,
+                "--max-pages", "500",
+                "--max-depth", "3",
+                "--workers", "5",
+                "--out-dir", str(self.task_list.artifacts_dir)
+            ]
+            
+            if sitemap_url:
+                cmd.extend(["--sitemap-url", sitemap_url])
+            
+            success, stdout, stderr = self.run_cli_command(cmd, timeout=600)
+            
+            if stdout:
+                lines = stdout.strip().split('\n')[-5:]
+                for line in lines:
+                    if line.strip():
+                        console.print(f"  {line}")
+            
+            if success:
+                # Find the generated action queue
+                action_queue_files = list(self.task_list.artifacts_dir.glob("crawl_404_*_action_queue.json"))
+                if action_queue_files:
+                    latest = max(action_queue_files, key=lambda p: p.stat().st_mtime)
+                    
+                    # Create tasks from crawl data
+                    tasks_created = self._create_tasks_from_crawl_404s(latest)
+                    
+                    console.print(f"\n[green]✓ Crawl complete[/green]")
+                    console.print(f"[dim]Action queue: {latest.name}[/dim]")
+                    
+                    task.status = "done"
+                    task.completed_at = datetime.now().isoformat()
+                    self.task_list.save()
+                    return True
+                else:
+                    console.print("[yellow]No crawl results generated[/yellow]")
+                    return False
+            else:
+                console.print(f"[red]✗ Crawl failed[/red]")
+                if stderr:
+                    console.print(f"[dim]{stderr[-500:]}[/dim]")
+                return False
+                
+        except Exception as e:
+            console.print(f"[red]Error: {e}[/red]")
+            return False
+    
+    def _create_tasks_from_crawl_404s(self, crawl_file: Path) -> int:
+        """Parse crawl 404 results and create fix tasks.
+        
+        Returns:
+            Number of tasks created
+        """
+        try:
+            data = json.loads(crawl_file.read_text())
+            items = data.get("items", [])
+            by_source = data.get("by_source", {})
+            
+            if not items:
+                console.print("[dim]No 404s found in crawl[/dim]")
+                return 0
+            
+            tasks_created = 0
+            
+            # Create one task per source page with broken links
+            for source, broken_links in by_source.items():
+                if not broken_links:
+                    continue
+                
+                # Determine priority based on number of broken links
+                priority = "high" if len(broken_links) >= 5 else "medium"
+                
+                # Create descriptive title
+                if source == "(direct/sitemap)":
+                    title = f"Fix {len(broken_links)} 404s in sitemap/direct access"
+                else:
+                    source_slug = source.replace(f"https://www.{self.project.website_id}.com/", "").replace(f"https://{self.project.website_id}.com/", "")
+                    title = f"Fix {len(broken_links)} broken links on {source_slug[:40]}"
+                
+                # Check if similar task already exists
+                existing = any(
+                    t.type == "fix_404_redirects" and source in (t.notes or "")
+                    for t in self.task_list.tasks
+                    if t.status in ("todo", "in_progress")
+                )
+                if existing:
+                    continue
+                
+                # Build notes with broken links
+                links_note = "\n".join(f"- {link.get('url', '')}" for link in broken_links[:10])
+                if len(broken_links) > 10:
+                    links_note += f"\n- ... and {len(broken_links) - 10} more"
+                
+                # Create the task
+                fix_task = self.task_list.create_task(
+                    task_type="fix_404_redirects",
+                    title=title,
+                    phase="implementation",
+                    priority=priority,
+                    notes=f"Source: {source}\n\nBroken links:\n{links_note}",
+                    category="technical_seo",
+                    url=source if source != "(direct/sitemap)" else None
+                )
+                tasks_created += 1
+            
+            if tasks_created > 0:
+                console.print(f"[green]✓ Created {tasks_created} crawl 404 fix task(s)[/green]")
+            
+            return tasks_created
+            
+        except Exception as e:
+            console.print(f"[dim]Warning: Could not parse crawl results: {e}[/dim]")
+            return 0
+    
+    def _collect_gsc_redirect_analysis(self, task: Task) -> bool:
+        """Process GSC Page with redirect CSV."""
+        repo_root = Path(self.project.repo_root)
+        
+        # Find CSV file
+        csv_candidates = [
+            repo_root / ".github" / "automation" / "page_with_redirect.csv",
+            repo_root / "page_with_redirect.csv",
+        ]
+        
+        csv_path = None
+        for candidate in csv_candidates:
+            if candidate.exists():
+                csv_path = candidate
+                break
+        
+        if not csv_path:
+            console.print("[yellow]No redirect CSV found.[/yellow]")
+            console.print("[dim]Export GSC Coverage > Page with redirect and save as:[/dim]")
+            console.print(f"[dim]  {repo_root}/.github/automation/page_with_redirect.csv[/dim]")
+            return False
+        
+        # Load manifest for site URL
+        manifest_path = repo_root / ".github" / "automation" / "manifest.json"
+        site_url = ""
+        if manifest_path.exists():
+            try:
+                manifest = json.loads(manifest_path.read_text())
+                site_url = manifest.get("url", "")
+            except Exception:
+                pass
+        
+        if not site_url:
+            site_url = f"https://www.{self.project.website_id}.com"
+        
+        console.print(f"\n[bold]Processing redirect CSV:[/bold] {csv_path.name}")
+        console.print(f"[dim]Site: {site_url}[/dim]\n")
+        
+        try:
+            cmd = [
+                "seo", "gsc-redirect-analysis",
+                "--repo-root", str(repo_root),
+                "--csv-file", str(csv_path),
+                "--site", site_url,
+                "--out-dir", str(self.task_list.artifacts_dir)
+            ]
+            
+            success, stdout, stderr = self.run_cli_command(cmd, timeout=60)
+            
+            if stdout:
+                lines = stdout.strip().split('\n')[-5:]
+                for line in lines:
+                    if line.strip():
+                        console.print(f"  {line}")
+            
+            if success:
+                # Find the generated action queue
+                action_queue_files = list(self.task_list.artifacts_dir.glob("redirect_analysis_*_action_queue.json"))
+                if action_queue_files:
+                    latest = max(action_queue_files, key=lambda p: p.stat().st_mtime)
+                    
+                    # Create tasks from redirect data
+                    tasks_created = self._create_tasks_from_redirect_analysis(latest)
+                    
+                    console.print(f"\n[green]✓ Redirect analysis complete[/green]")
+                    console.print(f"[dim]Action queue: {latest.name}[/dim]")
+                    
+                    task.status = "done"
+                    task.completed_at = datetime.now().isoformat()
+                    self.task_list.save()
+                    return True
+                else:
+                    console.print("[yellow]No action queue generated[/yellow]")
+                    return False
+            else:
+                console.print(f"[red]✗ Redirect analysis failed[/red]")
+                if stderr:
+                    console.print(f"[dim]{stderr[-500:]}[/dim]")
+                return False
+                
+        except Exception as e:
+            console.print(f"[red]Error: {e}[/red]")
+            return False
+    
+    def _create_tasks_from_redirect_analysis(self, analysis_file: Path) -> int:
+        """Parse redirect analysis results and create fix tasks.
+        
+        Returns:
+            Number of tasks created
+        """
+        try:
+            data = json.loads(analysis_file.read_text())
+            items = data.get("items", [])
+            in_sitemap_count = data.get("meta", {}).get("in_sitemap", 0)
+            buckets = data.get("buckets", {})
+            
+            if not items:
+                console.print("[dim]No redirect issues found[/dim]")
+                return 0
+            
+            tasks_created = 0
+            
+            # CRITICAL: Create task for redirects in sitemap
+            if in_sitemap_count > 0:
+                in_sitemap_items = [i for i in items if i.get("in_sitemap")]
+                
+                existing = any(
+                    t.type == "fix_redirects" and "sitemap" in (t.title or "").lower()
+                    for t in self.task_list.tasks
+                    if t.status in ("todo", "in_progress")
+                )
+                
+                if not existing:
+                    urls_note = "\n".join(f"- {item.get('url', '')}" for item in in_sitemap_items[:10])
+                    if len(in_sitemap_items) > 10:
+                        urls_note += f"\n- ... and {len(in_sitemap_items) - 10} more"
+                    
+                    fix_task = self.task_list.create_task(
+                        task_type="fix_redirects",
+                        title=f"🚨 Remove {in_sitemap_count} redirects from sitemap",
+                        phase="implementation",
+                        priority="high",
+                        notes=f"CRITICAL: These URLs redirect but are still in your sitemap.\n\nRemove these URLs from sitemap.xml:\n{urls_note}\n\nEnsure only final destination URLs are in the sitemap.",
+                        category="technical_seo"
+                    )
+                    tasks_created += 1
+            
+            # Create tasks by redirect type
+            for redirect_type, type_items in buckets.items():
+                if redirect_type == "canonicalization":
+                    # Usually expected, only flag if in sitemap
+                    continue
+                
+                existing = any(
+                    t.type == "fix_redirects" and redirect_type in (t.title or "")
+                    for t in self.task_list.tasks
+                    if t.status in ("todo", "in_progress")
+                )
+                if existing:
+                    continue
+                
+                sample_urls = "\n".join(f"- {item.get('url', '')}" for item in type_items[:5])
+                
+                fix_task = self.task_list.create_task(
+                    task_type="fix_redirects",
+                    title=f"Fix {len(type_items)} {redirect_type} redirects",
+                    phase="implementation",
+                    priority="medium",
+                    notes=f"Redirect type: {redirect_type}\n\nSample URLs:\n{sample_urls}\n\nAction: {type_items[0].get('suggested_action', 'Review and fix')}",
+                    category="technical_seo"
+                )
+                tasks_created += 1
+            
+            if tasks_created > 0:
+                console.print(f"[green]✓ Created {tasks_created} redirect fix task(s)[/green]")
+            
+            return tasks_created
+            
+        except Exception as e:
+            console.print(f"[dim]Warning: Could not parse redirect analysis: {e}[/dim]")
+            return 0
+    
     def _count_api_errors(self, collection_file: Path) -> int:
         """Count items with api_error reason code."""
         try:
@@ -536,6 +934,82 @@ class CollectionRunner(TaskRunner):
             
         except Exception as e:
             console.print(f"[dim]Warning: Could not parse collection results: {e}[/dim]")
+            return 0
+    
+    def _create_tasks_from_coverage_404s(self, coverage_file: Path) -> int:
+        """Parse Coverage 404 action queue and create fix tasks.
+        
+        Returns:
+            Number of tasks created
+        """
+        try:
+            import json
+            data = json.loads(coverage_file.read_text())
+            items = data.get("items", [])
+            
+            tasks_created = 0
+            seen_categories = set()  # Track unique categories to avoid duplicate tasks
+            
+            for item in items[:15]:  # Limit to top 15 issues
+                url = item.get("url", "")
+                category = item.get("category", "other")
+                reason = item.get("reason", "")
+                suggested_action = item.get("suggested_action", "")
+                priority = item.get("priority", 50)
+                
+                # Create one task per category (not per URL) to avoid task spam
+                if category in seen_categories:
+                    continue
+                seen_categories.add(category)
+                
+                # Map category to task type
+                task_type_map = {
+                    "malformed": "fix_404_redirects",
+                    "raw_content_path": "fix_404_redirects",
+                    "old_content_slug": "fix_404_redirects",
+                    "legacy_content_path": "fix_404_redirects",
+                    "non_www": "fix_404_redirects",
+                    "trailing_slash": "fix_404_redirects",
+                    "valid_path_missing_content": "fix_404_redirects",
+                    "other": "fix_404_redirects",
+                }
+                
+                task_type = task_type_map.get(category, "fix_404_redirects")
+                
+                # Create descriptive title
+                title = f"Fix 404 {category.replace('_', ' ')}: {len([i for i in items if i.get('category') == category])} URLs"
+                
+                # Check if similar task already exists
+                existing = any(
+                    t.type == task_type and category in (t.title or "")
+                    for t in self.task_list.tasks
+                    if t.status in ("todo", "in_progress")
+                )
+                if existing:
+                    continue
+                
+                # Build notes with sample URLs
+                category_items = [i for i in items if i.get("category") == category][:5]
+                sample_urls = "\n".join(f"- {i.get('url', '')}" for i in category_items)
+                
+                # Create the task
+                fix_task = self.task_list.create_task(
+                    task_type=task_type,
+                    title=title,
+                    phase="implementation",
+                    priority="high" if priority <= 25 else "medium",
+                    notes=f"Category: {category}\nReason: {reason}\nSuggested Action: {suggested_action}\n\nSample URLs:\n{sample_urls}",
+                    category="technical_seo"
+                )
+                tasks_created += 1
+            
+            if tasks_created > 0:
+                console.print(f"[green]✓ Created {tasks_created} 404 fix task(s) from Coverage data[/green]")
+            
+            return tasks_created
+            
+        except Exception as e:
+            console.print(f"[dim]Warning: Could not parse coverage 404 results: {e}[/dim]")
             return 0
     
     @staticmethod

@@ -20,41 +20,41 @@ Repo-local SEO workspace:
 
 ## Tooling Requirements
 
-Use `pageseeds content` for ALL structured operations. Never use ad-hoc jq/Python/terminal scripts.
+Use `seo-content-cli` for ALL structured operations. Never use ad-hoc jq/Python/terminal scripts.
 
 ### Available CLI Commands (Step 3)
 
 ```bash
 # Load articles (Part 1 prerequisites)
-pageseeds content --workspace-root automation articles-summary --website-path .
-pageseeds content --workspace-root automation articles-index --website-path .
+seo-content-cli --workspace-root automation articles-summary --website-path .
+seo-content-cli --workspace-root automation articles-index --website-path .
 
 # Cannibalization spot-check
-pageseeds content --workspace-root automation get-articles-by-keyword --website-path . --keyword '<keyword>'
+seo-content-cli --workspace-root automation get-articles-by-keyword --website-path . --keyword '<keyword>'
 
 # Get article content by ID (no manual file lookup needed)
-pageseeds content --workspace-root automation get-article-content --website-path . --article-id <ID>
-pageseeds content --workspace-root automation get-article-content --website-path . --article-id <ID> --metadata-only
+seo-content-cli --workspace-root automation get-article-content --website-path . --article-id <ID>
+seo-content-cli --workspace-root automation get-article-content --website-path . --article-id <ID> --metadata-only
 
 # Scan existing internal links (read-only)
-pageseeds content --workspace-root automation scan-internal-links --website-path .
-pageseeds content --workspace-root automation scan-internal-links --website-path . --verbose
+seo-content-cli --workspace-root automation scan-internal-links --website-path .
+seo-content-cli --workspace-root automation scan-internal-links --website-path . --verbose
 
 # Generate linking plan from clusters in the brief (read-only)
-pageseeds content --workspace-root automation generate-linking-plan --website-path .
-pageseeds content --workspace-root automation generate-linking-plan --website-path . --missing-only
+seo-content-cli --workspace-root automation generate-linking-plan --website-path .
+seo-content-cli --workspace-root automation generate-linking-plan --website-path . --missing-only
 
 # Add links to a specific article
-pageseeds content --workspace-root automation add-article-links --website-path . --source-id <ID> --target-ids <ID1> <ID2> <ID3>
-pageseeds content --workspace-root automation add-article-links --website-path . --source-id <ID> --target-ids <ID1> --mode inline --dry-run
+seo-content-cli --workspace-root automation add-article-links --website-path . --source-id <ID> --target-ids <ID1> <ID2> <ID3>
+seo-content-cli --workspace-root automation add-article-links --website-path . --source-id <ID> --target-ids <ID1> --mode inline --dry-run
 
 # Batch add ALL missing links from the plan at once
-pageseeds content --workspace-root automation batch-add-links --website-path . --dry-run
-pageseeds content --workspace-root automation batch-add-links --website-path .
+seo-content-cli --workspace-root automation batch-add-links --website-path . --dry-run
+seo-content-cli --workspace-root automation batch-add-links --website-path .
 
 # Auto-update brief checklist based on actual links
-pageseeds content --workspace-root automation update-brief-linking-status --website-path . --dry-run
-pageseeds content --workspace-root automation update-brief-linking-status --website-path .
+seo-content-cli --workspace-root automation update-brief-linking-status --website-path . --dry-run
+seo-content-cli --workspace-root automation update-brief-linking-status --website-path .
 ```
 
 Disallowed as substitutes:
@@ -68,8 +68,8 @@ Disallowed as substitutes:
 ### 1) Load articles
 
 ```bash
-pageseeds content --workspace-root automation articles-summary --website-path .
-pageseeds content --workspace-root automation articles-index --website-path .
+seo-content-cli --workspace-root automation articles-summary --website-path .
+seo-content-cli --workspace-root automation articles-index --website-path .
 ```
 
 ### 2) Group by intent
@@ -101,7 +101,7 @@ In the brief, document:
 For suspected duplicates:
 
 ```bash
-pageseeds content --workspace-root automation get-articles-by-keyword --website-path . --keyword '<keyword>'
+seo-content-cli --workspace-root automation get-articles-by-keyword --website-path . --keyword '<keyword>'
 ```
 
 If 2+ matches, resolve by merging or differentiating.
@@ -132,7 +132,7 @@ Cluster format for the brief (must follow this structure for automated parsing):
 ### 1) Scan existing links
 
 ```bash
-pageseeds content --workspace-root automation scan-internal-links --website-path .
+seo-content-cli --workspace-root automation scan-internal-links --website-path .
 ```
 
 Review orphan articles and current link coverage.
@@ -140,7 +140,7 @@ Review orphan articles and current link coverage.
 ### 2) Generate the linking plan
 
 ```bash
-pageseeds content --workspace-root automation generate-linking-plan --website-path . --missing-only
+seo-content-cli --workspace-root automation generate-linking-plan --website-path . --missing-only
 ```
 
 This reads clusters from the brief and shows all missing hub-spoke + cross-cluster links.
@@ -151,15 +151,15 @@ This reads clusters from the brief and shows all missing hub-spoke + cross-clust
 
 ```bash
 # Preview first
-pageseeds content --workspace-root automation batch-add-links --website-path . --dry-run
+seo-content-cli --workspace-root automation batch-add-links --website-path . --dry-run
 # Apply
-pageseeds content --workspace-root automation batch-add-links --website-path .
+seo-content-cli --workspace-root automation batch-add-links --website-path .
 ```
 
 **Option B: Per-article (for targeted edits)**
 
 ```bash
-pageseeds content --workspace-root automation add-article-links --website-path . --source-id <ID> --target-ids <ID1> <ID2>
+seo-content-cli --workspace-root automation add-article-links --website-path . --source-id <ID> --target-ids <ID1> <ID2>
 ```
 
 Modes:
@@ -185,9 +185,9 @@ uv run tools/seo_help/fix_relative_links_to_canonical.py general/coffee --write
 
 ```bash
 # Preview
-pageseeds content --workspace-root automation update-brief-linking-status --website-path . --dry-run
+seo-content-cli --workspace-root automation update-brief-linking-status --website-path . --dry-run
 # Apply
-pageseeds content --workspace-root automation update-brief-linking-status --website-path .
+seo-content-cli --workspace-root automation update-brief-linking-status --website-path .
 ```
 
 This automatically scans actual MDX files and flips unchecked to checked for links that exist.
@@ -195,7 +195,7 @@ This automatically scans actual MDX files and flips unchecked to checked for lin
 ### 5) Verify bidirectional coverage
 
 ```bash
-pageseeds content --workspace-root automation generate-linking-plan --website-path . --missing-only
+seo-content-cli --workspace-root automation generate-linking-plan --website-path . --missing-only
 ```
 
 If missing_links > 0, repeat step 3 for remaining articles.

@@ -13,6 +13,16 @@ from .client import get_search_console_service, list_sites, auto_select_site_pro
 from .analytics import fetch_page_rows, fetch_queries_for_page, compute_movers
 from .indexing import inspect_url, InspectionRecord, classify_record, priority_for_record
 from .reports import generate_indexing_report, generate_site_scan_report
+from .coverage import (
+    parse_coverage_csv,
+    generate_coverage_404_report,
+    Coverage404Record,
+)
+from .redirects import (
+    parse_redirect_csv,
+    generate_redirect_report,
+    RedirectRecord,
+)
 
 __all__ = [
     # Credentials
@@ -31,6 +41,14 @@ __all__ = [
     "InspectionRecord",
     "classify_record",
     "priority_for_record",
+    # Coverage 404s
+    "parse_coverage_csv",
+    "generate_coverage_404_report",
+    "Coverage404Record",
+    # Redirect analysis
+    "parse_redirect_csv",
+    "generate_redirect_report",
+    "RedirectRecord",
     # Reports
     "generate_indexing_report",
     "generate_site_scan_report",
