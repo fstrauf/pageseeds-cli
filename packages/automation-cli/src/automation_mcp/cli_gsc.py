@@ -174,11 +174,29 @@ def cmd_gsc_indexing_report(args: Namespace) -> int:
         print(f"Inspecting {len(urls)} URLs...", file=sys.stderr)
         
         # Inspect URLs with threading
+        # NOTE: Each thread creates its own service because httplib2 is not thread-safe
         inspections: list[tuple[str, Any, str, str, int]] = []
+        
+        # Get credentials once (credentials object IS thread-safe)
+        from .seo.gsc.client import build_credentials_from_service_account, resolve_service_account_path
+        sa_path = args.service_account_path or None
+        if not sa_path:
+            # Try to resolve from env
+            sa_path = resolve_service_account_path(None, repo_root)
+        
+        credentials = None
+        if sa_path:
+            credentials = build_credentials_from_service_account(sa_path)
         
         def inspect_worker(url: str) -> tuple[str, Any, str, str, int] | None:
             try:
-                record = inspect_url(service, url, site_url=site_url, language=args.language)
+                # Create service per-thread to avoid httplib2 thread-safety issues
+                if credentials:
+                    from googleapiclient.discovery import build
+                    thread_service = build("searchconsole", "v1", credentials=credentials, cache_discovery=False, static_discovery=False)
+                else:
+                    thread_service = service
+                record = inspect_url(thread_service, url, site_url=site_url, language=args.language)
                 reason_code, action = classify_record(record)
                 priority = priority_for_record(record, reason_code)
                 return (url, record, reason_code, action, priority)

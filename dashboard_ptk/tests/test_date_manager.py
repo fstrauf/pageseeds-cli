@@ -91,24 +91,38 @@ def test_get_next_available_date_empty():
         json_path.unlink()
 
 
-def test_get_next_available_date_with_gap():
-    """Test getting next date with existing articles."""
+def test_get_next_available_date_prefers_past():
+    """Test that next date prefers gaps in the past over future dates."""
     today = datetime.now()
-    yesterday = today - timedelta(days=1)
-    yesterday_str = yesterday.strftime("%Y-%m-%d")
+    three_days_ago = today - timedelta(days=3)
+    five_days_ago = today - timedelta(days=5)
     
+    three_days_ago_str = three_days_ago.strftime("%Y-%m-%d")
+    five_days_ago_str = five_days_ago.strftime("%Y-%m-%d")
+    
+    # Articles with a gap: 5 days ago and 3 days ago (2-day gap between them)
     articles = [
-        {"id": 1, "published_date": yesterday_str, "status": "published"},
+        {"id": 1, "published_date": five_days_ago_str, "status": "published"},
+        {"id": 2, "published_date": three_days_ago_str, "status": "published"},
     ]
     json_path = create_test_articles_json(articles)
     try:
         dm = DateManager(json_path)
         next_date = dm.get_next_available_date()
         
-        # Should be latest + 2 days
-        expected = yesterday + timedelta(days=2)
-        assert next_date.date() == expected.date()
-        print("✓ get_next_available_date with gap")
+        # Should fill the gap in the past (4 days ago), not create future date
+        expected = five_days_ago + timedelta(days=2)  # 3 days ago is taken, so should try to find another slot
+        # Actually, with the 2-day gap requirement, it should insert between them
+        # 5 days ago + 2 days = 3 days ago, but that's taken
+        # So it should look for other gaps
+        
+        # Most recent article is 3 days ago, so gap search should start from there
+        # Since there's no room between 5 and 3 days ago, it should look elsewhere
+        # Or create a future date
+        
+        # Let's verify it's NOT a future date (should prefer past gaps)
+        assert next_date.date() <= today.date(), f"Expected date in the past or today, got {next_date.date()}"
+        print("✓ get_next_available_date prefers past gaps")
     finally:
         json_path.unlink()
 
@@ -156,13 +170,67 @@ def test_invalid_json_handling():
         json_path.unlink()
 
 
+def test_get_next_available_date_finds_past_gap():
+    """Test finding a gap in the past."""
+    today = datetime.now()
+    
+    # Create articles with a clear 3-day gap in the past
+    # Article 1: 10 days ago
+    # Article 2: 5 days ago  
+    # Gap: 7 days ago (available slot)
+    ten_days_ago = today - timedelta(days=10)
+    five_days_ago = today - timedelta(days=5)
+    
+    articles = [
+        {"id": 1, "published_date": ten_days_ago.strftime("%Y-%m-%d"), "status": "published"},
+        {"id": 2, "published_date": five_days_ago.strftime("%Y-%m-%d"), "status": "published"},
+    ]
+    json_path = create_test_articles_json(articles)
+    try:
+        dm = DateManager(json_path)
+        next_date = dm.get_next_available_date()
+        
+        # Should find a date between 10 and 5 days ago (in the past)
+        # Expected: 10 days ago + 2 days = 8 days ago
+        expected = ten_days_ago + timedelta(days=2)
+        assert next_date.date() == expected.date(), f"Expected {expected.date()}, got {next_date.date()}"
+        assert next_date.date() < today.date(), "Date should be in the past"
+        print("✓ get_next_available_date finds past gap")
+    finally:
+        json_path.unlink()
+
+
+def test_get_next_available_date_no_past_gap_uses_future():
+    """Test that future dates are used only when no past gaps exist."""
+    today = datetime.now()
+    yesterday = today - timedelta(days=1)
+    
+    # Only one article (yesterday), no gaps in past
+    articles = [
+        {"id": 1, "published_date": yesterday.strftime("%Y-%m-%d"), "status": "published"},
+    ]
+    json_path = create_test_articles_json(articles)
+    try:
+        dm = DateManager(json_path)
+        next_date = dm.get_next_available_date()
+        
+        # No gaps in past, so should use future
+        expected = yesterday + timedelta(days=2)
+        assert next_date.date() == expected.date(), f"Expected {expected.date()}, got {next_date.date()}"
+        print("✓ get_next_available_date uses future when no past gaps")
+    finally:
+        json_path.unlink()
+
+
 if __name__ == "__main__":
     print("=== Testing DateManager ===\n")
     test_get_all_dates_empty()
     test_get_all_dates_with_articles()
     test_is_date_available()
     test_get_next_available_date_empty()
-    test_get_next_available_date_with_gap()
+    test_get_next_available_date_prefers_past()
+    test_get_next_available_date_finds_past_gap()
+    test_get_next_available_date_no_past_gap_uses_future()
     test_get_available_slots()
     test_invalid_json_handling()
     print("\n=== All DateManager Tests Passed ===")

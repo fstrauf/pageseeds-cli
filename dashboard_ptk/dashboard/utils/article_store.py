@@ -629,17 +629,19 @@ class ArticleStore:
         return max(a.id for a in articles) + 1
     
     def get_next_available_date(self) -> str:
-        """Get next available publish date (2-day gap from latest)."""
-        articles = self.load_json()
-        if not articles:
-            return datetime.now().strftime("%Y-%m-%d")
+        """
+        Get next available publish date.
         
-        try:
-            latest = max(a.date_obj for a in articles if a.published_date)
-            next_date = latest + timedelta(days=2)
-            return next_date.strftime("%Y-%m-%d")
-        except ValueError:
-            return datetime.now().strftime("%Y-%m-%d")
+        STRATEGY: Prefer dates in the past over future dates.
+        1. First, look for gaps in the past (between existing articles)
+        2. Only if no past gaps exist, use future dates
+        """
+        from .date_manager import DateManager
+        
+        # Use DateManager for consistent logic
+        date_mgr = DateManager(self.articles_json_path)
+        next_date = date_mgr.get_next_available_date()
+        return next_date.strftime("%Y-%m-%d")
     
     def get_latest_date(self, include_drafts: bool = True) -> Optional[datetime]:
         """Get the most recent article date."""

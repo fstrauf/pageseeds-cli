@@ -98,76 +98,100 @@ class DateManager:
         """
         Get the next available date for scheduling.
         
-        Finds first available slot (2-day gaps) that's not already taken.
+        STRATEGY: Always prefer dates in the past over future dates.
+        This ensures content appears as "backdated" rather than "scheduled future".
+        
+        1. First, look for gaps in the past (between existing articles)
+        2. Only if no past gaps exist, look at future dates
         
         Args:
             raise_on_error: If True, raise DateAllocationError on failure
         
         Returns:
-            datetime: Next available date
+            datetime: Next available date (preferably in the past)
         
         Raises:
             DateAllocationError: If no available date found and raise_on_error=True
         """
         today = datetime.now()
+        today_date = today.date()
         existing_dates = self.get_all_dates(include_drafts=True)
         
         if not existing_dates:
             return today
         
-        # Get latest date
-        latest_date = max(existing_dates)
-        latest_datetime = datetime.combine(latest_date, datetime.min.time())
+        # STEP 1: Look for gaps in the past FIRST (preferred)
+        gap_in_past = self._find_gap_in_past(existing_dates)
+        if gap_in_past:
+            return gap_in_past
         
-        # Start from latest + 2 days
+        # STEP 2: If latest date is already in the future, continue from there
+        latest_date = max(existing_dates)
+        if latest_date > today_date:
+            latest_datetime = datetime.combine(latest_date, datetime.min.time())
+            candidate = latest_datetime + timedelta(days=2)
+            
+            # Find first available slot in the future
+            max_attempts = 50
+            attempts = 0
+            
+            while attempts < max_attempts:
+                if candidate.date() not in existing_dates:
+                    return candidate
+                candidate = candidate + timedelta(days=2)
+                attempts += 1
+        
+        # STEP 3: Latest date is in the past, but no gaps found
+        # This means articles are densely packed. Add to the end (future).
+        latest_datetime = datetime.combine(latest_date, datetime.min.time())
         candidate = latest_datetime + timedelta(days=2)
         
-        # Find first available slot
-        max_attempts = 50
-        attempts = 0
+        # But warn that we're creating a future date
+        console.print(f"[dim]Note: No gaps in past {len(existing_dates)} articles. Using future date.[/dim]")
         
-        while attempts < max_attempts:
-            if candidate.date() not in existing_dates:
-                return candidate
+        while candidate.date() in existing_dates:
             candidate = candidate + timedelta(days=2)
-            attempts += 1
         
-        # Fallback: try to find a gap in the past
-        gap = self._find_gap_in_past(existing_dates)
-        if gap:
-            return gap
-        
-        if raise_on_error:
-            raise DateAllocationError(
-                f"No available date in next {max_attempts * 2} days and no gaps in past"
-            )
-        
-        return today
+        return candidate
     
     def _find_gap_in_past(self, existing_dates: set) -> Optional[datetime]:
-        """Find a gap between existing dates where we can insert."""
+        """
+        Find a gap between existing dates where we can insert.
+        
+        Looks for 2+ day gaps (minimum spacing) and returns the first available
+        slot in the most recent gap. Prefers gaps closer to today.
+        """
         if not existing_dates:
             return None
         
         today = datetime.now().date()
         sorted_dates = sorted(existing_dates)
         
-        # Look for gaps (iterate backwards - most recent first)
+        # Look for gaps (iterate backwards - most recent gaps first)
         for i in range(len(sorted_dates) - 1, 0, -1):
             curr_date = sorted_dates[i]
             prev_date = sorted_dates[i - 1]
             
-            # Only gaps before today
-            if curr_date >= today:
+            # Only consider gaps that end before today (past only)
+            if curr_date > today:
                 continue
             
-            # Check for 4+ day gap (room for new article)
+            # Check for 2+ day gap (minimum spacing for new article)
             gap_days = (curr_date - prev_date).days
-            if gap_days >= 4:
+            if gap_days >= 2:
+                # Try to insert at prev_date + 2 days
                 insert_date = prev_date + timedelta(days=2)
-                if insert_date < curr_date and insert_date <= today:
-                    if insert_date not in existing_dates:
-                        return datetime.combine(insert_date, datetime.min.time())
+                
+                # Must be: after prev_date, before or at curr_date, and not taken
+                if prev_date < insert_date <= curr_date and insert_date not in existing_dates:
+                    return datetime.combine(insert_date, datetime.min.time())
+                
+                # If that slot is taken, try to find another slot in this gap
+                test_date = insert_date + timedelta(days=1)
+                while test_date < curr_date and test_date <= today:
+                    if test_date not in existing_dates:
+                        return datetime.combine(test_date, datetime.min.time())
+                    test_date += timedelta(days=1)
         
         return None
     
