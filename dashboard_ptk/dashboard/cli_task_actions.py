@@ -251,12 +251,28 @@ class DashboardTaskActionsMixin:
             self.session.prompt("\nPress Enter...")
             return
 
-        console.print("\n[bold]Available Specifications:[/bold]\n")
+        pending = [t for t in specs if t.status != "done"]
+        implemented = [t for t in specs if t.status == "done"]
 
-        for i, task in enumerate(specs[:10], 1):
-            status_icon = "✓" if task.status == "done" else "◑"
-            console.print(f"  {i}. {status_icon} {task.title}")
-            console.print(f"     [dim]{task.spec_file}[/dim]")
+        console.print("\n[bold]Specifications:[/bold]")
+        console.print("[dim]  ◑ = spec written, needs implementation   ✓ = implemented (moved to old/)[/dim]\n")
+
+        all_shown = []
+        if pending:
+            console.print("[yellow]  Pending implementation:[/yellow]")
+            for task in pending:
+                all_shown.append(task)
+                i = len(all_shown)
+                console.print(f"  {i}. [yellow]◑[/yellow] {task.title}")
+                console.print(f"     [dim]{task.spec_file}[/dim]")
+
+        if implemented:
+            console.print("\n[green]  Implemented:[/green]")
+            for task in implemented:
+                all_shown.append(task)
+                i = len(all_shown)
+                console.print(f"  {i}. [green]✓[/green] {task.title}")
+                console.print(f"     [dim]{task.spec_file}[/dim]")
 
         console.print("\n  c. Cancel")
 
@@ -267,8 +283,8 @@ class DashboardTaskActionsMixin:
 
         try:
             idx = int(choice) - 1
-            if 0 <= idx < len(specs):
-                task = specs[idx]
+            if 0 <= idx < len(all_shown):
+                task = all_shown[idx]
                 spec_path = self.task_list.automation_dir / task.spec_file
                 if spec_path.exists():
                     content = spec_path.read_text()

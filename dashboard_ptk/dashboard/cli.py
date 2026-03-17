@@ -442,6 +442,39 @@ class Dashboard(
             
         except Exception as e:
             console.print(f"[dim]Task sync warning: {e}[/dim]")
+        
+        # Sync spec-based tasks: auto-complete when user moves spec to old/ or completed/
+        try:
+            if not self.project_manager.current or not self.task_list:
+                return
+
+            automation_dir = Path(self.project_manager.current.repo_root) / ".github" / "automation"
+            changed = False
+            for task in self.task_list.tasks:
+                if not task.spec_file or task.status == "done":
+                    continue
+                spec_path = automation_dir / task.spec_file
+                if spec_path.exists():
+                    continue  # still in active location — nothing to do
+                # Check if moved to old/ or completed/ subdirectory
+                filename = spec_path.name
+                parent = spec_path.parent
+                for archive_dir in ("old", "completed", "archived"):
+                    candidate = parent / archive_dir / filename
+                    if candidate.exists():
+                        new_rel = str(candidate.relative_to(automation_dir))
+                        console.print(f"[dim]Auto-completing spec task '{task.title}' (moved to {archive_dir}/)[/dim]")
+                        task.spec_file = new_rel
+                        task.status = "done"
+                        if not task.completed_at:
+                            task.completed_at = __import__('datetime').datetime.now().isoformat()
+                        changed = True
+                        break
+            if changed:
+                self.task_list.save()
+
+        except Exception as e:
+            console.print(f"[dim]Spec sync warning: {e}[/dim]")
     
     def _check_task_suggestions(self):
         """
@@ -751,10 +784,15 @@ class Dashboard(
             console.print("  d. Delete task(s)")
             console.print("  q. Back")
             
-            # Quick Task Creation Section
+            # Workflow Section
+            console.print("\n[bold dim]Run Workflows:[/bold dim]")
+            console.print("  [dim]o.[/dim] Orchestrate Now    [dim]u.[/dim] Publish Articles   [dim]i.[/dim] Indexing Diagnostics")
+            console.print("  [dim]n.[/dim] GSC Performance    [dim]h.[/dim] Reddit History")
+            
+            # Quick Add Tasks Section
             console.print("\n[bold dim]Quick Add Tasks:[/bold dim]")
             console.print("  [dim]g.[/dim] Collect GSC       [dim]p.[/dim] Collect PostHog    [dim]k.[/dim] Research Keywords")
-            console.print("  [dim]r.[/dim] Reddit Search     [dim]x.[/dim] Landing Pages      [dim]n.[/dim] GSC Performance Analysis")
+            console.print("  [dim]r.[/dim] Reddit Search     [dim]x.[/dim] Landing Pages")
             
             choice = self.session.prompt("\nChoice: ").strip()
             
@@ -780,8 +818,21 @@ class Dashboard(
                 self._quick_create_task("reddit")
             elif choice.lower() == "x":
                 self._quick_create_task("landing_pages")
+            elif choice.lower() == "o":
+                self._run_orchestration_now()
+                self.session.prompt("\nPress Enter...")
+            elif choice.lower() == "u":
+                self._run_menu_workflow_task("publish_content", "Publish Articles")
+                self.session.prompt("\nPress Enter...")
+            elif choice.lower() == "i":
+                self._run_menu_workflow_task("indexing_diagnostics", "Indexing Diagnostics")
+                self.session.prompt("\nPress Enter...")
             elif choice.lower() == "n":
-                self._quick_create_task("performance")
+                self._run_menu_workflow_task("analyze_gsc_performance", "GSC Performance Analysis")
+                self.session.prompt("\nPress Enter...")
+            elif choice.lower() == "h":
+                self._show_reddit_history()
+                self.session.prompt("\nPress Enter...")
             elif choice.lower() == "c":
                 self._run_simple_article_creation()
             elif choice.lower() == "d":
@@ -1019,11 +1070,16 @@ class Dashboard(
                     self.session.prompt("\nPress Enter...")
                     return
             
+            # For spec-type tasks a single failure should not stop the whole batch;
+            # log it and continue so all tasks get attempted.
+            _spec_types = {"fix_indexing", "fix_technical", "fix_content", "content_strategy", "landing_page_spec"}
+            pause_on_error = selected_type not in _spec_types
+            
             # Create filtered processor
             config = BatchConfig(
                 max_tasks=max_tasks,
                 auto_approve_batchable=(autonomy in ("automatic", "batchable")),
-                pause_on_error=True,
+                pause_on_error=pause_on_error,
                 rate_limit_delay=3 if selected_type == "write_article" else 5,
                 task_type_defaults=task_type_defaults
             )
@@ -1584,15 +1640,9 @@ class Dashboard(
             console.print("[bold]MENU[/bold]\n")
             console.print("1. View/Work on Tasks")
             console.print("2. Projects (Switch / Add / Manage)")
-            console.print("v. Verify Setup")
             console.print("a. Articles (Sync / Repair / Validate)")
-            console.print("o. Orchestrate Now")
-            console.print("p. Publish Articles (Step 5)")
-            console.print("i. Indexing Diagnostics (Step 6)")
-            console.print("g. GSC Performance Analysis")
-            if p:
-                console.print("h. Reddit History (view posted/skipped)")
             console.print("c. Check PostHog Configs (All Projects)")
+            console.print("v. Verify Setup")
             console.print("s. Scheduler (View / Configure / Run)")
             console.print("r. Reset Project")
             console.print("d. Delete Project")
@@ -1626,22 +1676,6 @@ class Dashboard(
                 self._articles_menu()
                 # Refresh integrity check after articles menu
                 integrity_issues = self._auto_verify()
-            elif choice.lower() == "o":
-                self._run_orchestration_now()
-                self.session.prompt("\nPress Enter...")
-            elif choice.lower() == "p":
-                self._run_menu_workflow_task("publish_content", "Publish Content")
-                self.session.prompt("\nPress Enter...")
-            elif choice.lower() == "i":
-                self._run_menu_workflow_task("indexing_diagnostics", "Indexing Diagnostics")
-                self.session.prompt("\nPress Enter...")
-            elif choice.lower() == "g":
-                self._run_menu_workflow_task("analyze_gsc_performance", "GSC Performance Analysis")
-                self.session.prompt("\nPress Enter...")
-            elif choice.lower() == "h":
-                if self.project_manager.current:
-                    self._show_reddit_history()
-                self.session.prompt("\nPress Enter...")
             elif choice.lower() == "c":
                 self._check_all_posthog_configs()
                 self.session.prompt("\nPress Enter...")

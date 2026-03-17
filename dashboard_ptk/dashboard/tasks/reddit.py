@@ -158,12 +158,26 @@ class RedditRunner(TaskRunner):
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         output_file = reddit_dir / f"search_{self.project.website_id}_{timestamp}.md"
         
+        # Ask the user for optional additional context before launching the agent
+        console.print("[bold]Additional search context (optional)[/bold]")
+        console.print("[dim]Provide any extra focus for this search — e.g. a specific pain point, topic, or audience angle.[/dim]")
+        user_context = self.session.prompt("Context (Enter to skip): ").strip()
+
         console.print("[dim]Running Reddit opportunity search...[/dim]\n")
         
         MAX_POST_AGE_DAYS = 14
+
+        user_context_block = ""
+        if user_context:
+            user_context_block = f"""
+ADDITIONAL CONTEXT FROM USER:
+{user_context}
+
+Use this context to sharpen your search queries, prioritise subreddits, and score relevance. It does not override the config files — it supplements them.
+"""
         
         prompt = f"""You are a Reddit marketing researcher. Find opportunities for {self.project.website_id} and save results to a markdown file.
-
+{user_context_block}
 CONFIG FILES TO READ (from repo's .github/automation/ directory):
 1. project_summary.md - Website/product description
 2. reddit_config.md - Project-specific: product name, mention stance, trigger topics, excluded subreddits

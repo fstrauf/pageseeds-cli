@@ -3,6 +3,7 @@ Main implementation task dispatcher
 """
 import time
 from datetime import datetime
+from pathlib import Path
 from rich.console import Console
 
 from ..config import EXECUTION_MODE_MAP, AUTONOMY_MODE_MAP
@@ -65,7 +66,7 @@ This requires modifying Vue components and build configuration, which needs test
         console.print("[dim]Agent analyzing task...[/dim]")
         
         try:
-            success, output = self.run_kimi_agent(prompt, timeout=60)
+            success, output = self.run_kimi_agent(prompt, timeout=60, mode="text")
             
             if output:
                 lines = output.strip().split('\n')
@@ -96,74 +97,73 @@ This requires modifying Vue components and build configuration, which needs test
         
         spec_file = specs_dir / f"{task.id}_spec.md"
         
-        # Build context file paths
-        context_files = []
+        # Build context section — read files here in Python and embed content
+        # directly. Never pass bare file paths: the agent has no file-reading tools.
+        context_section = ""
         
-        # Primary context: task's input_artifact (investigation result)
+        def _read_truncated(path: Path, max_chars: int = 3000) -> str:
+            try:
+                text = path.read_text()
+                return text[:max_chars] + ("\n...[truncated]" if len(text) > max_chars else "")
+            except Exception:
+                return ""
+        
         if task.input_artifact:
             context_path = self.task_list.automation_dir / task.input_artifact
             if context_path.exists():
-                context_files.append(("Investigation Result", str(context_path.absolute())))
+                content_text = _read_truncated(context_path)
+                if content_text:
+                    context_section += f"\n## Investigation Result\n{content_text}\n"
         
-        # Trace back to original source data through parent task
-        source_artifact = None
         if task.parent_task:
             parent = next((t for t in self.task_list.tasks if t.id == task.parent_task), None)
             if parent and parent.input_artifact:
                 source_path = self.task_list.automation_dir / parent.input_artifact
                 if source_path.exists():
-                    source_artifact = str(source_path.absolute())
-                    context_files.append(("Original Source Data", source_artifact))
-        
-        spec_file_abs = str(spec_file.absolute())
-        
-        # Build context file section for prompt
-        context_section = ""
-        for label, path in context_files:
-            context_section += f"\n{label}: {path}"
+                    content_text = _read_truncated(source_path, max_chars=2000)
+                    if content_text:
+                        context_section += f"\n## Source Data\n{content_text}\n"
         
         prompt = f"""Write a technical specification for an SEO fix.
 
 PROJECT: {self.project.website_id}
 TASK: {task.title}
-OUTPUT_FILE: {spec_file_abs}
 {context_section}
+Output a complete specification in markdown with these sections:
 
-INSTRUCTIONS:
-1. Read the CONTEXT_FILE(s) above
-2. Write a complete specification to OUTPUT_FILE using WriteFile tool
-3. The specification should be markdown format with these sections:
-   - # Specification: [title]
-   - ## Problem
-   - ## Root Cause
-   - ## Solution
-   - ## Implementation Steps
-   - ## Files to Modify
-   - ## Acceptance Criteria
+# Specification: [title]
 
-REQUIREMENTS:
-- Be SPECIFIC with file paths
+## Problem
+## Root Cause
+## Solution
+## Implementation Steps
+## Files to Modify
+## Acceptance Criteria
+
+Requirements:
+- Be specific with file paths
 - Include code examples where helpful
 - Make it actionable for a developer
-- Include a "## Data Sources" section listing the full paths to all referenced files
-- Use WriteFile tool to save directly to OUTPUT_FILE
 
-Write the specification now."""
+Output ONLY the markdown specification. Do not explain what you are doing."""
         
         console.print("[dim]Agent writing specification...[/dim]")
-        console.print("[dim]This may take 2-3 minutes. Press Ctrl+C to cancel.[/dim]\n")
+        console.print("[dim]This may take up to 5 minutes. Press Ctrl+C to cancel.[/dim]\n")
+        
+        content = ""
         
         try:
             start_time = time.time()
             
-            # Run with progress spinner
+            # Single attempt — retrying with the same prompt/context won't fix
+            # a structural failure (bad context, model confusion, timeout).
             result = [None]
             exception = [None]
             done = threading.Event()
             
             def worker():
                 try:
-                    result[0] = self.run_kimi_agent(prompt, timeout=180)
+                    result[0] = self.run_kimi_agent(prompt, timeout=300, mode="text")
                 except Exception as e:
                     exception[0] = e
                 finally:
@@ -178,64 +178,52 @@ Write the specification now."""
                     status.update(f"[dim]Writing specification... ({elapsed:.0f}s elapsed)[/dim]")
             
             if exception[0]:
-                raise exception[0]
+                console.print(f"[red]✗ Agent error: {exception[0]}[/red]")
+                return False
             
             success, output = result[0]
             
-            # Check if file was created
-            if spec_file.exists() and spec_file.stat().st_mtime > start_time:
-                content = spec_file.read_text()
-                
-                task.spec_file = str(spec_file.relative_to(self.task_list.automation_dir))
-                task.implementation_mode = "spec"
-                task.status = "done"
-                task.completed_at = datetime.now().isoformat()
-                self.task_list.save()
-                
-                console.print(f"[green]✓ Specification written to: {spec_file}[/green]")
-                
-                # Show preview
-                console.print("\n[dim]Preview:[/dim]")
-                preview_lines = content.split('\n')[:25]
-                for line in preview_lines:
-                    console.print(f"  {line[:80]}")
-                if len(content.split('\n')) > 25:
-                    console.print("  ...")
-                
-                return True
-            else:
-                # File wasn't created - fallback to stdout parsing
-                if output and "#" in output:
-                    # Extract markdown content
-                    for marker in ["# Specification:", "# Spec:", "## Problem", "## Solution"]:
-                        idx = output.find(marker)
-                        if idx != -1:
-                            line_start = output.rfind('\n', 0, idx) + 1
-                            content = output[line_start if line_start > 0 else idx:]
-                            
-                            # Clean up
-                            if content.startswith("```markdown"):
-                                content = content[11:]
-                            elif content.startswith("```"):
-                                content = content[3:]
-                            if content.endswith("```"):
-                                content = content[:-3]
-                            content = content.strip()
-                            
-                            if content and len(content) > 100:
-                                spec_file.write_text(content)
-                                
-                                task.spec_file = str(spec_file.relative_to(self.task_list.automation_dir))
-                                task.implementation_mode = "spec"
-                                task.status = "done"
-                                task.completed_at = datetime.now().isoformat()
-                                self.task_list.save()
-                                
-                                console.print(f"[green]✓ Specification saved from output[/green]")
-                                return True
-                
-                console.print("[red]✗ No specification content generated[/red]")
+            if not success and (not output or len(output.strip()) < 50):
+                reason = output.strip() if output and output.strip() else "no output returned"
+                console.print(f"[red]✗ Specification failed: {reason}[/red]")
                 return False
+            
+            content = output.strip() if output else ""
+            
+            # Strip any code fences the agent may have wrapped the output in
+            if content.startswith("```markdown"):
+                content = content[11:]
+            elif content.startswith("```"):
+                content = content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+            content = content.strip()
+            
+            if not content or len(content) < 50:
+                reason = output.strip() if output and output.strip() else "no output returned"
+                console.print(f"[red]✗ Specification content too short: {reason[:200]}[/red]")
+                return False
+            
+            # Write the file ourselves — never rely on the agent to do it
+            spec_file.write_text(content)
+            
+            task.spec_file = str(spec_file.relative_to(self.task_list.automation_dir))
+            task.implementation_mode = "spec"
+            task.status = "review"  # spec written — waiting for manual implementation
+            task.completed_at = datetime.now().isoformat()
+            self.task_list.save()
+            
+            console.print(f"[green]✓ Specification written to: {spec_file}[/green]")
+            
+            # Show preview
+            console.print("\n[dim]Preview:[/dim]")
+            preview_lines = content.split('\n')[:25]
+            for line in preview_lines:
+                console.print(f"  {line[:80]}")
+            if len(content.split('\n')) > 25:
+                console.print("  ...")
+            
+            return True
                 
         except Exception as e:
             console.print(f"[red]Error: {e}[/red]")
@@ -493,7 +481,7 @@ Write the complete specification now."""
                 
                 task.spec_file = str(spec_file.relative_to(self.task_list.automation_dir))
                 task.implementation_mode = "spec"
-                task.status = "done"
+                task.status = "review"  # spec written — waiting for manual implementation
                 task.completed_at = datetime.now().isoformat()
                 self.task_list.save()
                 
@@ -536,7 +524,7 @@ Write the complete specification now."""
                                 
                                 task.spec_file = str(spec_file.relative_to(self.task_list.automation_dir))
                                 task.implementation_mode = "spec"
-                                task.status = "done"
+                                task.status = "review"  # spec written — waiting for manual implementation
                                 task.completed_at = datetime.now().isoformat()
                                 self.task_list.save()
                                 

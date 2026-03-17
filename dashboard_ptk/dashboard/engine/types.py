@@ -219,11 +219,16 @@ class ToolResult:
 
 @dataclass
 class PromptSpec:
-    """Agent prompt descriptor."""
+    """Agent prompt descriptor.
+
+    mode: 'text'  — agent produces plain text output only; no file/shell tools needed.
+           'agent' — agent may read/write files and run shell commands (default).
+    """
 
     text: str
     timeout: int = 600
     output_filename: str = "agent_output.md"
+    mode: str = "agent"  # 'text' | 'agent'
 
 
 @dataclass
@@ -255,6 +260,7 @@ class WorkflowStep:
     kind: StepKind
     handler: str
     params: dict[str, Any] = field(default_factory=dict)
+    optional: bool = False
 
 
 @dataclass

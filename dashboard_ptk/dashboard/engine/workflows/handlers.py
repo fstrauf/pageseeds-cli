@@ -150,6 +150,7 @@ class RedditWorkflowHandler(_RunnerWorkflowHandler):
                     kind="deterministic",
                     handler="normalizer",
                     params={"normalizer_id": "reddit_opportunities", "artifact_name": "reddit_opportunities"},
+                    optional=True,
                 )
             )
         return steps

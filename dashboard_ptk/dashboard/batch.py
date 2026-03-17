@@ -194,9 +194,10 @@ class BatchProcessor:
                 
                 # Executor now handles status updates, but ensure failed tasks have timestamp
                 if not success and not task.failed_at:
-                    task.failed_at = datetime.now().isoformat()
-                    if not task.notes:
-                        task.notes = error_msg or "Task execution failed"
+                    # Reset to todo so the task can be retried in a future batch run
+                    task.status = "todo"
+                    task.started_at = None
+                    task.notes = error_msg or "Task execution failed — will retry next batch run"
         except Exception as e:
             console.print(f"[red]Error executing task: {e}[/red]")
             success = False

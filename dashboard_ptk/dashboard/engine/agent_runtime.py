@@ -161,17 +161,23 @@ class CopilotAdapter(AgentAdapter):
             output_path = output_file.name
 
         try:
+            # Text-only prompts don't need file/shell tools — disable MCPs and
+            # all built-in tools for a pure generation call (no round trips).
+            # Agent-mode prompts need full tool access.
+            cmd = [
+                bin_path,
+                "--model", model,
+                "--prompt", prompt.text,
+                "--silent",
+                "--no-color",
+                "--no-ask-user",
+            ]
+            if getattr(prompt, "mode", "agent") == "text":
+                cmd += ["--disable-builtin-mcps", "--available-tools", ""]
+
             with open(output_path, "w") as out_f:
                 result = subprocess.run(
-                    [
-                        bin_path,
-                        "--model", model,
-                        "--prompt", prompt.text,
-                        "--silent",
-                        "--no-color",
-                        "--no-ask-user",
-                        "--disable-builtin-mcps",
-                    ],
+                    cmd,
                     stdout=out_f,
                     stderr=subprocess.PIPE,
                     text=True,

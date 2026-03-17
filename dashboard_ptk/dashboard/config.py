@@ -69,8 +69,8 @@ EXECUTION_MODE_MAP = {
     "reddit_search": "automatic",
     "reddit_reply": "manual",
     
-    # Fix tasks - agent decides
-    "fix_indexing": "auto",
+    # Fix tasks - spec mode (agent writes investigation/fix specification)
+    "fix_indexing": "spec",
     
     # Landing page tasks
     "landing_page_spec": "spec",

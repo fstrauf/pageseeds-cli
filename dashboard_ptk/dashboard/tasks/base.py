@@ -98,8 +98,12 @@ class TaskRunner(ABC):
     def _build_context(self, task_id: str | None = None):
         return execution_context_for(self.task_list, self.project, task_id=task_id)
 
-    def run_kimi_agent(self, prompt: str, cwd: Path = None, timeout: int = 600) -> tuple[bool, str]:
-        """Run Kimi via central AgentRuntime and persist raw output artifacts."""
+    def run_kimi_agent(self, prompt: str, cwd: Path = None, timeout: int = 600, mode: str = "agent") -> tuple[bool, str]:
+        """Run agent via central AgentRuntime and persist raw output artifacts.
+
+        mode='text'  — agent produces plain text only; disables file/shell tools (faster).
+        mode='agent' — agent has full tool access (read/write files, run commands).
+        """
         task_id = self._active_task.id if self._active_task else None
         context = self._build_context(task_id=task_id)
 
@@ -108,7 +112,7 @@ class TaskRunner(ABC):
 
         raw = self.agent_runtime.run(
             step_id="legacy_runner_agent_call",
-            prompt=PromptSpec(text=prompt, timeout=timeout),
+            prompt=PromptSpec(text=prompt, timeout=timeout, mode=mode),
             context=context,
         )
         self._last_agent_result = raw

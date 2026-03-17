@@ -67,6 +67,10 @@ class ExecutionEngine:
                 }
                 norm = self.normalizers.normalize(step.params.get("normalizer_id", "passthrough_markdown"), latest_raw, norm_context)
                 if not norm.success:
+                    if step.optional:
+                        task.notes = f"Optional normalization skipped ({step.name}): {norm.error}"
+                        self.task_list.save()
+                        continue
                     error_msg = f"Normalization failed ({step.name}): {norm.error}"
                     task.status = "failed"
                     task.notes = error_msg
