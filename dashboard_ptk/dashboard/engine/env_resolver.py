@@ -19,7 +19,12 @@ class EnvResolver:
 
     @staticmethod
     def default_automation_root() -> Path:
-        # /.../automation/dashboard_ptk/dashboard/engine/env_resolver.py -> /.../automation
+        # Honour an explicit override first (e.g. export AUTOMATION_ROOT=~/01_code/automation)
+        override = os.environ.get("AUTOMATION_ROOT", "").strip()
+        if override:
+            return Path(override).expanduser().resolve()
+        # Fallback: walk up from this file's location
+        # /.../pageseeds-cli/dashboard_ptk/dashboard/engine/env_resolver.py -> .../pageseeds-cli
         return Path(__file__).resolve().parents[3]
 
     def env_files(self) -> list[Path]:

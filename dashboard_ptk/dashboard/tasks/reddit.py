@@ -889,7 +889,6 @@ DO NOT save the file until ALL opportunities have:
     def _env_resolver(self) -> EnvResolver:
         return EnvResolver(
             repo_root=Path(self.project.repo_root),
-            automation_root=self._automation_workspace_env_path().parent,
         )
 
     def _resolve_reddit_refresh_token(self) -> tuple[str | None, str | None, bool]:
@@ -987,7 +986,7 @@ DO NOT save the file until ALL opportunities have:
     @staticmethod
     def _automation_workspace_env_path() -> Path:
         """Return workspace-level automation .env path."""
-        return Path(__file__).resolve().parents[3] / ".env"
+        return EnvResolver.default_automation_root() / ".env"
     
     def _extract_from_markdown(self, task: Task, field: str) -> str:
         """Extract data from markdown file by matching title."""

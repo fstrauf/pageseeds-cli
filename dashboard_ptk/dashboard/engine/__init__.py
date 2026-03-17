@@ -1,6 +1,6 @@
 """Dashboard execution engine package."""
 
-from .agent_runtime import AgentRuntime, KimiAdapter
+from .agent_runtime import AgentRuntime, CopilotAdapter, KimiAdapter
 from .env_resolver import EnvResolver
 from .executor import ExecutionEngine, execution_context_for
 from .history_paths import resolve_reddit_history_path
@@ -34,6 +34,7 @@ __all__ = [
     "ExecutionContext",
     "ExecutionEngine",
     "EnvResolver",
+    "CopilotAdapter",
     "KimiAdapter",
     "NormalizedResult",
     "NormalizerRegistry",

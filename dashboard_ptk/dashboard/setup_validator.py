@@ -2,6 +2,7 @@
 Setup validation - check everything is configured correctly
 """
 import json
+import os
 import shutil
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -42,27 +43,36 @@ class ValidationResult:
 
 class SetupValidator:
     """Validates the user's setup before running."""
-    
+
     REQUIRED_CLIS = ["pageseeds"]
-    AGENT_CLI = "kimi"
-    
+
+    # Provider → (cli_binary, install_hint)
+    _AGENT_PROVIDERS: dict[str, tuple[str, str]] = {
+        "kimi": ("kimi", "Install kimi-code CLI from: https://github.com/moonshot-ai/kimi-code"),
+        "copilot": ("gh", "Install gh CLI from: https://cli.github.com/ then run: gh auth login"),
+    }
+
     def __init__(self):
         self.user_config_dir = Path.home() / ".config/automation"
         self.projects_file = self.user_config_dir / "projects.json"
         self.secrets_file = self.user_config_dir / "secrets.env"
-    
+
+    @property
+    def _configured_provider(self) -> str:
+        return os.environ.get("AGENT_PROVIDER", "kimi").lower().strip()
+
     def validate(self) -> ValidationResult:
         """Run all validations and return results."""
         result = ValidationResult()
-        
+
         self._check_cli_tools(result)
         self._check_agent_cli(result)
         self._check_config_directory(result)
         self._check_projects_config(result)
         self._check_secrets(result)
-        
+
         return result
-    
+
     def _check_cli_tools(self, result: ValidationResult):
         """Check CLI tools are installed."""
         for cli in self.REQUIRED_CLIS:
@@ -76,14 +86,16 @@ class SetupValidator:
                     message=f"Missing CLI: {display_name}",
                     fix_hint="Install with: ./scripts/install_uv_tools.sh"
                 ))
-    
+
     def _check_agent_cli(self, result: ValidationResult):
-        """Check agent CLI is available."""
-        if not shutil.which(self.AGENT_CLI):
+        """Check configured agent provider CLI is available."""
+        provider = self._configured_provider
+        cli, hint = self._AGENT_PROVIDERS.get(provider, ("kimi", "Unknown provider"))
+        if not shutil.which(cli):
             result.issues.append(ValidationIssue(
                 severity="warning",
-                message=f"Agent CLI not found: {self.AGENT_CLI}",
-                fix_hint="Install kimi-code CLI from: https://github.com/moonshot-ai/kimi-code"
+                message=f"Agent CLI not found for provider '{provider}': {cli}",
+                fix_hint=hint,
             ))
     
     def _check_config_directory(self, result: ValidationResult):
