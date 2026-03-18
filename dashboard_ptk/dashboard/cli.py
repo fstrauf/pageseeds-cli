@@ -1093,11 +1093,41 @@ class Dashboard(
             
             class FilteredBatchProcessor(BatchProcessor):
                 def get_ready_autonomous_tasks(self):
-                    tasks = self.task_list.get_ready_by_type(selected_type)
                     if selected_task_ids:
-                        tasks = [task for task in tasks if task.id in selected_task_ids]
+                        # Look up selected tasks directly by ID from the full loaded task list.
+                        # This is more robust than get_ready_by_type(), which can silently return
+                        # empty if the tasks are temporarily not visible (e.g. dependency-lock edge
+                        # cases or status not yet refreshed after a prior partial run).
+                        completed = self.task_list.get_completed_ids()
+                        all_by_id = {t.id: t for t in self.task_list.tasks}
+                        tasks = [
+                            all_by_id[tid]
+                            for tid in selected_task_ids
+                            if tid in all_by_id
+                            and all_by_id[tid].status == "todo"
+                            and all_by_id[tid].is_unlocked(completed)
+                        ]
+                        if not tasks:
+                            # Diagnostic: help understand why the batch sees no tasks.
+                            console.print(
+                                f"[yellow]⚠ No ready tasks found for selected IDs "
+                                f"({len(selected_task_ids)} selected, "
+                                f"{len(self.task_list.tasks)} tasks loaded)[/yellow]"
+                            )
+                            for tid in selected_task_ids:
+                                t = all_by_id.get(tid)
+                                if t:
+                                    console.print(
+                                        f"[dim]  task {tid}: status={t.status}[/dim]"
+                                    )
+                                else:
+                                    console.print(
+                                        f"[dim]  task {tid}: NOT FOUND in loaded task list[/dim]"
+                                    )
                         tasks.sort(key=lambda task: selected_order.get(task.id, 999999))
-                    return tasks
+                        return tasks
+                    # Non-reddit (or no pre-selection): fall back to standard type query
+                    return self.task_list.get_ready_by_type(selected_type)
             
             processor = FilteredBatchProcessor(self.task_list, self, config)
             
