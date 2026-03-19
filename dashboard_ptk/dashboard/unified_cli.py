@@ -943,13 +943,12 @@ def _cmd_dashboard(args: argparse.Namespace) -> None:
         workflow_bundle=bundle,
         runtime_config=RuntimeConfig(required_clis=bundle.required_clis),
     )
-    if not app.project_manager.current:
-        app._clear_screen()
-        selected = app.project_manager.select_project_interactive(app.session)
-        if selected:
-            app._activate_project(selected, show_report=True)
-    else:
+
+    # Open directly to the richer main menu overview. If there is an already
+    # active project, initialize it silently for project-scoped cards/workflows.
+    if app.project_manager.current:
         app._activate_project(app.project_manager.current, show_report=False)
+
     app.main_menu()
 
 

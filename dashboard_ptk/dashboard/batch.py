@@ -172,11 +172,15 @@ class BatchProcessor:
                 task.notes = "Execution engine not initialized"
                 task.failed_at = datetime.now().isoformat()
             else:
-                # Pass execution context to runners for batch-specific defaults
-                if self.config.task_type_defaults:
-                    for runner in self.dashboard.runners.values():
-                        if hasattr(runner, 'set_execution_context'):
-                            runner.set_execution_context(self.config.task_type_defaults)
+                # Always suppress per-task confirmation prompts in batch mode
+                batch_context = {
+                    "non_interactive": True,
+                    "auto_confirm": True,
+                    **self.config.task_type_defaults,
+                }
+                for runner in self.dashboard.runners.values():
+                    if hasattr(runner, 'set_execution_context'):
+                        runner.set_execution_context(batch_context)
                 
                 result = self.dashboard.executor.execute_task(task)
                 # Handle both old bool return and new tuple return
@@ -187,10 +191,9 @@ class BatchProcessor:
                     error_msg = "Task execution failed" if not success else ""
                 
                 # Clear execution context after task completion
-                if self.config.task_type_defaults:
-                    for runner in self.dashboard.runners.values():
-                        if hasattr(runner, 'set_execution_context'):
-                            runner.set_execution_context({})
+                for runner in self.dashboard.runners.values():
+                    if hasattr(runner, 'set_execution_context'):
+                        runner.set_execution_context({})
                 
                 # Executor now handles status updates, but ensure failed tasks have timestamp
                 if not success and not task.failed_at:

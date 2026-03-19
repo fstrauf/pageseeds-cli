@@ -35,6 +35,8 @@ from .cli_gsc import (
     cmd_gsc_coverage_404s,
     cmd_crawl_404s,
     cmd_gsc_redirect_analysis,
+    cmd_gsc_sync_articles,
+    cmd_content_audit,
 )
 
 
@@ -745,6 +747,22 @@ def _seo_gsc_redirect_analysis(args: argparse.Namespace) -> None:
     Uses internal GSC module (no external scripts).
     """
     exit_code = cmd_gsc_redirect_analysis(args)
+    raise SystemExit(exit_code)
+
+
+def _seo_gsc_sync_articles(args: argparse.Namespace) -> None:
+    """
+    Hydrate articles.json GSC blocks with live performance data.
+    """
+    exit_code = cmd_gsc_sync_articles(args)
+    raise SystemExit(exit_code)
+
+
+def _seo_content_audit(args: argparse.Namespace) -> None:
+    """
+    Batch deterministic content audit across all articles — no LLM required.
+    """
+    exit_code = cmd_content_audit(args)
     raise SystemExit(exit_code)
 
 
@@ -2129,6 +2147,49 @@ def _build_parser() -> argparse.ArgumentParser:
     seo_redirect_analysis.add_argument("--manifest", default="", help="Optional manifest.json path")
     seo_redirect_analysis.add_argument("--out-dir", default="", help="Override output directory")
     seo_redirect_analysis.set_defaults(func=_seo_gsc_redirect_analysis)
+
+    seo_gsc_sync = seo_sub.add_parser(
+        "gsc-sync-articles",
+        help="Hydrate articles.json with live GSC performance data (impressions, clicks, CTR, position).",
+    )
+    seo_gsc_sync.add_argument("--repo-root", default="", help="Repo root (default: cwd)")
+    seo_gsc_sync.add_argument(
+        "--workspace-dir", default="automation", help="Workspace dir relative to repo-root (default: automation)"
+    )
+    seo_gsc_sync.add_argument("--manifest", default="", help="Optional path to manifest.json")
+    seo_gsc_sync.add_argument(
+        "--site", default="", help="GSC property, e.g. sc-domain:example.com or https://example.com"
+    )
+    seo_gsc_sync.add_argument(
+        "--days", type=int, default=90, help="Days of GSC history to fetch (default: 90)"
+    )
+    seo_gsc_sync.add_argument("--service-account-path", default="", help="GSC service account JSON path")
+    seo_gsc_sync.add_argument(
+        "--dry-run", action="store_true", help="Preview matches without writing articles.json"
+    )
+    seo_gsc_sync.add_argument(
+        "--verbose", action="store_true", help="Show all GSC paths returned and unmatched article paths"
+    )
+    seo_gsc_sync.set_defaults(func=_seo_gsc_sync_articles)
+
+    seo_content_audit = seo_sub.add_parser(
+        "content-audit",
+        help="Batch deterministic content audit: checks all articles, scores & ranks them, writes content_audit.json (no LLM).",
+    )
+    seo_content_audit.add_argument("--repo-root", default="", help="Repo root (default: cwd)")
+    seo_content_audit.add_argument(
+        "--workspace-dir", default="automation", help="Workspace dir relative to repo-root (default: automation)"
+    )
+    seo_content_audit.add_argument(
+        "--status", default="", help="Only audit articles with this status (default: published)"
+    )
+    seo_content_audit.add_argument(
+        "--top", type=int, default=0, help="Limit output to top N priority articles (default: all)"
+    )
+    seo_content_audit.add_argument(
+        "--dry-run", action="store_true", help="Run checks but don't write content_audit.json"
+    )
+    seo_content_audit.set_defaults(func=_seo_content_audit)
 
     seo_crawl_404s = seo_sub.add_parser(
         "crawl-404s",

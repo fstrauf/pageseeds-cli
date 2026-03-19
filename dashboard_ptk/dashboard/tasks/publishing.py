@@ -167,6 +167,126 @@ class PublishingRunner(TaskRunner):
             console.print(f"    [dim]Linking error: {e}[/dim]")
             return False
     
+    def _fix_future_dates_free_slot(self, date_issues: list, repo_root: Path) -> int:
+        """
+        Fix future dates by assigning each article the nearest earlier free date
+        (a past date where no other article has been published).
+        Updates both articles.json and the MDX frontmatter.
+        """
+        import json
+        import re
+        from datetime import date, timedelta
+
+        articles_json = self.article_manager.get_articles_json_path(repo_root)
+        if not articles_json:
+            console.print("    [yellow]⚠ Could not locate articles.json[/yellow]")
+            return 0
+
+        try:
+            with open(articles_json) as f:
+                data = json.load(f)
+        except Exception as e:
+            console.print(f"    [yellow]⚠ Failed to read articles.json: {e}[/yellow]")
+            return 0
+
+        all_articles = data.get("articles", [])
+
+        # Collect all taken dates across ALL articles (published or draft)
+        taken_dates: set[date] = set()
+        for a in all_articles:
+            d_str = a.get("published_date") or ""
+            if d_str:
+                try:
+                    taken_dates.add(date.fromisoformat(d_str))
+                except ValueError:
+                    pass
+
+        today = date.today()
+
+        def _next_free_date(taken: set[date]) -> date:
+            """Walk backwards from yesterday to find newest unused date."""
+            candidate = today - timedelta(days=1)
+            while candidate in taken:
+                candidate -= timedelta(days=1)
+            return candidate
+
+        # Resolve content directory for frontmatter updates
+        content_dir = self.article_manager.get_content_dir(repo_root)
+
+        fixed = 0
+        for issue in date_issues:
+            article_id = issue["id"]
+
+            # Find the article record
+            target_article = next((a for a in all_articles if a.get("id") == article_id), None)
+            if not target_article:
+                console.print(f"    [yellow]⚠ Article {article_id} not found in articles.json[/yellow]")
+                continue
+
+            new_date = _next_free_date(taken_dates)
+            new_date_str = new_date.isoformat()
+            old_date_str = target_article.get("published_date", "?")
+
+            # Reserve so next article in loop gets a different slot
+            taken_dates.add(new_date)
+
+            # 1. Update articles.json in-memory
+            target_article["published_date"] = new_date_str
+
+            # 2. Update MDX frontmatter
+            file_path = target_article.get("file", "")
+            mdx_path = self._resolve_article_file_path(file_path, repo_root, content_dir) if content_dir else None
+            fm_ok = False
+            if mdx_path and mdx_path.exists():
+                fm_ok = self._update_frontmatter_date_inline(mdx_path, new_date_str)
+
+            console.print(
+                f"    [green]✓ Article {article_id}: {old_date_str} → {new_date_str}"
+                + ("" if fm_ok else " [yellow](articles.json only — MDX not updated)[/yellow]")
+                + "[/green]"
+            )
+            fixed += 1
+
+        # Persist articles.json
+        if fixed:
+            try:
+                with open(articles_json, "w") as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+            except Exception as e:
+                console.print(f"    [yellow]⚠ Failed to save articles.json: {e}[/yellow]")
+                return 0
+
+        return fixed
+
+    @staticmethod
+    def _update_frontmatter_date_inline(content_path: Path, new_date_iso: str) -> bool:
+        """Update `date:`, `published_date:`, or `published:` in MDX/MD frontmatter."""
+        import re
+        try:
+            text = content_path.read_text(encoding="utf-8")
+        except Exception:
+            return False
+        if not text.startswith("---"):
+            return False
+        parts = text.split("---", 2)
+        if len(parts) < 3:
+            return False
+        fm, body = parts[1], parts[2]
+        date_re = re.compile(r"^(\s*(?:date|published_date|published)\s*:).*$", re.IGNORECASE | re.MULTILINE)
+        match = date_re.search(fm)
+        if match:
+            fm_new = date_re.sub(rf'\1 "{new_date_iso}"', fm, count=1)
+        else:
+            # Insert after title line if present, otherwise at top
+            title_match = re.search(r"^(\s*title\s*:.*$)", fm, re.IGNORECASE | re.MULTILINE)
+            insert_pos = title_match.end() + 1 if title_match else 0
+            fm_new = fm[:insert_pos] + f'date: "{new_date_iso}"\n' + fm[insert_pos:]
+        try:
+            content_path.write_text("---" + fm_new + "---" + body, encoding="utf-8")
+        except Exception:
+            return False
+        return True
+
     def _fix_future_dates_deterministic(self, date_issues: list, repo_root: Path) -> int:
         """
         Fix future dates using date redistribution to maintain spacing.
@@ -519,12 +639,23 @@ Report what structural issues were found and fixed."""
             
             console.print(f"\n[dim]Options:[/dim]")
             console.print(f"  1. Fix dates to today (deterministic) - RECOMMENDED")
-            console.print(f"  2. Skip date fixes (NOT RECOMMENDED - may cause issues)")
+            console.print(f"  2. Assign nearest earlier free date (no article published on that day)")
+            console.print(f"  3. Skip date fixes (NOT RECOMMENDED - may cause issues)")
             
-            choice = self.session.prompt("\nChoice (1/2): ").strip()
+            choice = self.session.prompt("\nChoice (1/2/3): ").strip()
             
-            if choice != "2":
-                # Default to fixing dates (Option 1 or Enter)
+            if choice == "2":
+                console.print(f"\n[dim]Finding nearest earlier free dates...[/dim]")
+                fixed_count = self._fix_future_dates_free_slot(future_date_issues, repo_root)
+                console.print(f"[green]✓ Fixed {fixed_count} date issue(s)[/green]")
+                if fixed_count == len(future_date_issues):
+                    issues = other_issues
+                else:
+                    console.print(f"[yellow]⚠ Some dates could not be fixed - will be handled in publishing[/yellow]")
+            elif choice == "3":
+                console.print(f"[yellow]⚠ Skipping date fixes - future dates may cause issues[/yellow]")
+            else:
+                # Default to Option 1 (fix to today)
                 console.print(f"\n[dim]Fixing future dates...[/dim]")
                 fixed_count = self._fix_future_dates_deterministic(future_date_issues, repo_root)
                 console.print(f"[green]✓ Fixed {fixed_count} date issue(s)[/green]")
@@ -533,8 +664,6 @@ Report what structural issues were found and fixed."""
                     issues = other_issues
                 else:
                     console.print(f"[yellow]⚠ Some dates could not be fixed - will be handled in publishing[/yellow]")
-            else:
-                console.print(f"[yellow]⚠ Skipping date fixes - future dates may cause issues[/yellow]")
         
         # Ask for confirmation
         publish_count = len(ready_to_publish)

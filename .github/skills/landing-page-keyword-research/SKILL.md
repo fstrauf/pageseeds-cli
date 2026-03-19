@@ -275,6 +275,24 @@ Each landing page spec must include:
      "spec_file": "specs/landing_page_{slug}.md"
    }
    ```
+5. **Register in `automation/articles.json`** — append one entry per landing page spec so the content review workflow can track it. Read the current array, find the next available `id` (max existing `id` + 1), and append:
+   ```json
+   {
+     "id": <next_id>,
+     "type": "landing_page",
+     "title": "<landing page title>",
+     "url_slug": "<recommended-url-slug>",
+     "file_path": "unknown",
+     "target_keyword": "<target keyword phrase>",
+     "keyword_difficulty": <KD value or null>,
+     "target_volume": <monthly search volume or null>,
+     "status": "draft",
+     "gsc": null,
+     "last_reviewed_at": null,
+     "review_status": "needs_review"
+   }
+   ```
+   Set `file_path` to the actual repo-relative path if the file already exists; otherwise leave it as `"unknown"` — it can be updated once the page is built. Write `articles.json` back with the appended entry.
 
 ## Re-run Logic
 

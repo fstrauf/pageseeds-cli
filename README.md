@@ -52,6 +52,44 @@ EOF
 pageseeds
 ```
 
+## Development Workflow (Always Run Latest Local Code)
+
+Use an editable local install plus PATH precedence so each code change in this repo is immediately used by the pageseeds command.
+
+### 1. Install editable local CLI
+
+```bash
+cd /Users/fstrauf/01_code/pageseeds-cli
+./scripts/install_uv_tools.sh --update-shell
+```
+
+### 2. Ensure uv tool bin is first on PATH
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+exec zsh
+```
+
+### 3. Verify active binary and import path
+
+```bash
+which -a pageseeds
+pageseeds version
+~/.local/share/uv/tools/pageseeds-cli/bin/python -c "import dashboard; print(dashboard.__file__)"
+```
+
+Expected result: dashboard import path points to this repo under dashboard_ptk/dashboard.
+
+### 4. Daily development loop
+
+```bash
+cd /Users/fstrauf/01_code/pageseeds-cli
+# edit code
+pageseeds
+```
+
+No reinstall is required for normal Python source changes when using the editable install.
+
 ## What Gets Installed?
 
 The install script adds a single `pageseeds` command to your PATH that provides:

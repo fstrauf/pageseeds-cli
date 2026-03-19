@@ -580,6 +580,9 @@ Write the complete specification now."""
             "content_cleanup": self.runners["cleanup"],
             "publish_content": self.runners["publishing"],
             "indexing_diagnostics": self.runners["indexing"],
+            "content_review": self.runners["content_review"],
+            "content_audit": self.runners["content_audit"],
+            "content_review_apply": self.runners["content_review"],
         }
         
         if task.type in workflow_handlers:

@@ -5,7 +5,9 @@ description: SEO Step 7. Apply fixes for non-indexed pages using Step 6 artifact
 
 # SEO Indexing Remediation (Phase 2)
 
-Goal: take the deterministic outputs from Step 6 and turn them into a scoped set of content fixes you can land directly in this repo (PR/commit).
+Goal: take the deterministic outputs from Step 6 and turn them into a scoped set of content fixes applied to this repo's working tree.
+
+⛔ **DO NOT run `git push`, `git commit`, `git add`, or create a PR/branch.** Make the file edits only. The user commits and deploys manually.
 
 ## Inputs (From Step 6)
 

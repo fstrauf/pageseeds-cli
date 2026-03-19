@@ -74,6 +74,11 @@ EXECUTION_MODE_MAP = {
     
     # Landing page tasks
     "landing_page_spec": "spec",
+
+    # Content review tasks
+    "content_review": "workflow",
+    "content_audit": "workflow",
+    "content_review_apply": "auto",
 }
 
 # Task type to autonomy mode mapping (for batch processing)
@@ -109,6 +114,13 @@ AUTONOMY_MODE_MAP = {
     "fix_indexing": "manual",
     "publish_content": "manual",
     "indexing_diagnostics": "manual",
+
+    # Content review tasks - pause for human to apply recommendations
+    "content_review": "manual",
+    "content_review_apply": "automatic",
+
+    # Content audit - fully deterministic, runs immediately
+    "content_audit": "manual",
 }
 
 # Project code mapping (examples)

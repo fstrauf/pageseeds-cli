@@ -63,7 +63,9 @@ seo-content-cli --workspace-root automation articles-index --website-path . --st
 
 ### 4) Deploy
 
-Deploy is repo-specific (CI/CD, `pnpm build`, a deploy script, etc.). Run the repo’s normal deployment process.
+⛔ **DO NOT run `git push`, `git commit`, `git add`, or any deployment command.** The user deploys manually via their own pipeline.
+
+Stop here and report what is ready to publish. Inform the user the content changes are staged in the working tree and they should push/deploy when ready.
 
 ### 5) Verify
 

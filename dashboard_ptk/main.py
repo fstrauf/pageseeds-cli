@@ -21,7 +21,6 @@ from pathlib import Path
 def run_interactive():
     """Run interactive dashboard."""
     from dashboard import Dashboard
-    from dashboard.ui import console
     from dashboard.workflow_bundle import legacy_seo_reddit_bundle
     from dashboard.engine.runtime_config import RuntimeConfig
     
@@ -31,13 +30,10 @@ def run_interactive():
         runtime_config=RuntimeConfig(required_clis=bundle.required_clis),
     )
     
-    # Select project if none current
-    if not dashboard.project_manager.current:
-        dashboard._clear_screen()
-        selected = dashboard.project_manager.select_project_interactive(dashboard.session)
-        if not selected:
-            console.print("\n[yellow]No project selected. Exiting dashboard.[/yellow]")
-            return
+    # Open directly to the main dashboard. If a project is already active,
+    # activate it silently so project-scoped cards remain available.
+    if dashboard.project_manager.current:
+        dashboard._activate_project(dashboard.project_manager.current, show_report=False)
     
     # Run main menu
     dashboard.main_menu()

@@ -1,8 +1,7 @@
 """
 Clustering and internal linking tasks
 """
-import threading
-import time
+import json
 from pathlib import Path
 
 from rich.console import Console
@@ -16,43 +15,94 @@ console = Console()
 
 class LinkingRunner(TaskRunner):
     """Runs clustering and internal linking tasks."""
-    
-    def _run_with_progress(self, func, *args, **kwargs):
-        """Run a function with a progress spinner using Rich's status."""
-        from rich.status import Status
-        
-        result = [None]
-        exception = [None]
-        done = threading.Event()
-        
-        def worker():
-            try:
-                result[0] = func(*args, **kwargs)
-            except Exception as e:
-                exception[0] = e
-            finally:
-                done.set()
-        
-        # Start worker thread
-        thread = threading.Thread(target=worker)
-        thread.start()
-        
-        # Show Rich status spinner while waiting
-        start_time = time.time()
-        with Status("[dim]Working...[/dim]", console=console, spinner="dots") as status:
-            while not done.wait(timeout=0.1):
-                elapsed = time.time() - start_time
-                status.update(f"[dim]Working... ({elapsed:.0f}s elapsed)[/dim]")
-        
-        if exception[0]:
-            raise exception[0]
-        
-        return result[0]
+    WORKSPACE_ROOT = ".github/automation"
+    WEBSITE_PATH = "."
+    LINK_MODE = "related-section"
+
+    def _run_json_command(self, cmd: list[str], cwd: Path, step: str, timeout: int = 300) -> dict:
+        """Run a deterministic CLI command and parse JSON output."""
+        success, stdout, stderr = self.run_cli_command(cmd, cwd=cwd, timeout=timeout)
+        if not success:
+            detail = (stderr or stdout or "unknown error").strip()
+            raise RuntimeError(f"{step} failed: {detail[:500]}")
+        try:
+            return json.loads(stdout or "{}")
+        except json.JSONDecodeError as exc:
+            snippet = (stdout or "").strip()[:300]
+            raise RuntimeError(f"{step} returned invalid JSON: {exc}. Output: {snippet}") from exc
+
+    @staticmethod
+    def _to_int(value) -> int | None:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _build_link_map(self, items: list[dict], article_id: int | None) -> dict[int, list[int]]:
+        """Group missing links by source article, optionally scoped to one article."""
+        grouped: dict[int, set[int]] = {}
+        for item in items:
+            source_id = self._to_int(item.get("source_id"))
+            target_id = self._to_int(item.get("target_id"))
+            if source_id is None or target_id is None:
+                continue
+            if article_id is not None and source_id != article_id and target_id != article_id:
+                continue
+            grouped.setdefault(source_id, set()).add(target_id)
+        return {source: sorted(targets) for source, targets in grouped.items()}
+
+    def _count_scoped_missing(self, items: list[dict], article_id: int | None) -> int:
+        if article_id is None:
+            return len(items)
+        count = 0
+        for item in items:
+            source_id = self._to_int(item.get("source_id"))
+            target_id = self._to_int(item.get("target_id"))
+            if source_id is None or target_id is None:
+                continue
+            if source_id == article_id or target_id == article_id:
+                count += 1
+        return count
+
+    def _apply_links(self, repo_root: Path, link_map: dict[int, list[int]]) -> tuple[int, int]:
+        """Apply link changes source-by-source using deterministic CLI calls."""
+        total_added = 0
+        total_skipped = 0
+        for source_id, target_ids in sorted(link_map.items()):
+            cmd = [
+                "pageseeds",
+                "content",
+                "add-article-links",
+                "--workspace-root",
+                self.WORKSPACE_ROOT,
+                "--website-path",
+                self.WEBSITE_PATH,
+                "--source-id",
+                str(source_id),
+                "--target-ids",
+                *[str(tid) for tid in target_ids],
+                "--mode",
+                self.LINK_MODE,
+            ]
+            result = self._run_json_command(
+                cmd,
+                cwd=repo_root,
+                step=f"add links for source {source_id}",
+                timeout=300,
+            )
+            added = len(result.get("links_added") or [])
+            skipped = len(result.get("links_skipped") or [])
+            total_added += added
+            total_skipped += skipped
+            console.print(
+                f"[dim]- Source {source_id}: +{added} added, {skipped} skipped[/dim]"
+            )
+        return total_added, total_skipped
     
     def run(self, task: Task) -> bool:
         """Execute SEO Step 3: Clustering and Internal Linking."""
         console.print(f"\n[bold]Cluster & Link Task: {task.title}[/bold]")
-        console.print("[cyan]Running SEO Step 3: Clustering and Internal Linking[/cyan]\n")
+        console.print("[cyan]Running SEO Step 3: Clustering and Internal Linking (deterministic mode)[/cyan]\n")
         
         # Extract article ID from category if stored there
         article_id = None
@@ -62,84 +112,95 @@ class LinkingRunner(TaskRunner):
             except:
                 pass
         
-        # Find the content brief path
         repo_root = Path(self.project.repo_root)
-        automation_dir = repo_root / ".github" / "automation"
-        brief_path = automation_dir / "seo_content_brief.md"
-        
-        # Build the prompt
-        prompt_parts = [
-            f"Run SEO Step 3 (Clustering & Linking) for article in {self.project.website_id}.",
-            "",
-            f"WORKSPACE: .github/automation",
-        ]
-        
-        if article_id:
-            prompt_parts.extend([
-                f"TARGET ARTICLE ID: {article_id}",
-                "",
-                "STEPS:",
-                f"1. Load article {article_id} content: pageseeds content get-article-content --workspace-root .github/automation --website-path . --article-id {article_id}",
-                f"2. Scan existing internal links: pageseeds content scan-internal-links --workspace-root .github/automation --website-path .",
-                f"3. Generate linking plan: pageseeds content generate-linking-plan --workspace-root .github/automation --website-path . --missing-only",
-                "4. Identify which cluster this article belongs to",
-                "5. Add links TO this article from relevant existing articles",
-                "6. Add links FROM this article to relevant existing articles",
-                f"7. Use: pageseeds content add-article-links --workspace-root .github/automation --website-path . --source-id <ID> --target-ids <ID1> <ID2>",
-                f"8. Update brief linking status: pageseeds content update-brief-linking-status --workspace-root .github/automation --website-path .",
-            ])
-        else:
-            prompt_parts.extend([
-                "STEPS (Full Site):",
-                f"1. Load all articles: pageseeds content articles-summary --workspace-root .github/automation --website-path .",
-                f"2. Scan existing internal links: pageseeds content scan-internal-links --workspace-root .github/automation --website-path .",
-                f"3. Generate linking plan: pageseeds content generate-linking-plan --workspace-root .github/automation --website-path . --missing-only",
-                "4. Group articles by intent into clusters",
-                "5. Pick/update pillar articles for each cluster",
-                "6. Add missing hub-spoke and cross-cluster links",
-                f"7. Batch add links: pageseeds content batch-add-links --workspace-root .github/automation --website-path .",
-                "8. Update content brief with cluster mapping",
-            ])
-        
-        prompt_parts.extend([
-            "",
-            "REQUIREMENTS:",
-            "- Every article should link to its pillar (if support) or to supports (if pillar)",
-            "- Add 2-4 cross-cluster links where topically relevant",
-            "- Update the content brief linking checklist",
-            "- Use the pageseeds content commands",
-        ])
-        
-        if brief_path.exists():
-            prompt_parts.extend([
-                "",
-                f"CONTENT BRIEF: {brief_path}",
-                "Update the brief with cluster mapping and mark linking tasks complete.",
-            ])
-        
-        prompt = "\n".join(prompt_parts)
-        
-        console.print("[dim]Running clustering and linking workflow...[/dim]")
-        console.print("[dim]This may take 3-5 minutes. Press Ctrl+C to cancel.[/dim]\n")
-        
+        console.print("[dim]Step 1/4: Scanning current internal links...[/dim]")
+
         try:
-            # Run agent with progress indicator
-            success, output = self._run_with_progress(
-                self.run_kimi_agent, prompt, cwd=repo_root, timeout=600
+            base_cmd = [
+                "pageseeds",
+                "content",
+            ]
+            scan_before = self._run_json_command(
+                [
+                    *base_cmd,
+                    "scan-internal-links",
+                    "--workspace-root",
+                    self.WORKSPACE_ROOT,
+                    "--website-path",
+                    self.WEBSITE_PATH,
+                ],
+                cwd=repo_root,
+                step="scan internal links (before)",
             )
-            
-            if output:
-                lines = output.split('\n')
-                filtered = []
-                skip_patterns = ['ToolCall', 'ToolResult', 'StepBegin', 'ThinkPart', 'StatusUpdate', 'TurnBegin', 'TurnEnd']
-                for line in lines:
-                    if line.strip() and not any(p in line for p in skip_patterns):
-                        filtered.append(line)
-                if filtered:
-                    console.print('\n'.join(filtered[-30:]))
-            
+
+            console.print("[dim]Step 2/4: Building missing-link plan...[/dim]")
+            plan_before = self._run_json_command(
+                [
+                    *base_cmd,
+                    "generate-linking-plan",
+                    "--workspace-root",
+                    self.WORKSPACE_ROOT,
+                    "--website-path",
+                    self.WEBSITE_PATH,
+                    "--missing-only",
+                ],
+                cwd=repo_root,
+                step="generate linking plan (before)",
+            )
+
+            missing_items = plan_before.get("items") or []
+            scoped_missing_before = self._count_scoped_missing(missing_items, article_id)
+            link_map = self._build_link_map(missing_items, article_id)
+
+            console.print(
+                f"[dim]- Current links: {scan_before.get('total_internal_links', 0)} | "
+                f"Missing (scoped): {scoped_missing_before}[/dim]"
+            )
+
+            console.print("[dim]Step 3/4: Applying missing links...[/dim]")
+            if link_map:
+                links_added, links_skipped = self._apply_links(repo_root, link_map)
+            else:
+                links_added, links_skipped = 0, 0
+                console.print("[dim]- No missing links found for this scope[/dim]")
+
+            console.print("[dim]Step 4/4: Updating brief checklist + verifying...[/dim]")
+            brief_update = self._run_json_command(
+                [
+                    *base_cmd,
+                    "update-brief-linking-status",
+                    "--workspace-root",
+                    self.WORKSPACE_ROOT,
+                    "--website-path",
+                    self.WEBSITE_PATH,
+                ],
+                cwd=repo_root,
+                step="update brief linking status",
+            )
+
+            plan_after = self._run_json_command(
+                [
+                    *base_cmd,
+                    "generate-linking-plan",
+                    "--workspace-root",
+                    self.WORKSPACE_ROOT,
+                    "--website-path",
+                    self.WEBSITE_PATH,
+                    "--missing-only",
+                ],
+                cwd=repo_root,
+                step="generate linking plan (after)",
+            )
+            scoped_missing_after = self._count_scoped_missing(plan_after.get("items") or [], article_id)
+
             console.print(f"\n[green]✓ Clustering and linking complete[/green]")
-            console.print("[dim]Internal links have been added and brief updated.[/dim]")
+            console.print(
+                f"[dim]Links added: {links_added}, skipped: {links_skipped}, "
+                f"missing before/after (scoped): {scoped_missing_before}/{scoped_missing_after}[/dim]"
+            )
+            console.print(
+                f"[dim]Brief checklist updated: {brief_update.get('items_checked', 0)} newly checked[/dim]"
+            )
             
             task.status = "done"
             task.completed_at = __import__('datetime').datetime.now().isoformat()

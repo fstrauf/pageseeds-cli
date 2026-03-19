@@ -97,7 +97,11 @@ After implementation handoff, Agent B provides:
    - Workflow logic belongs in `.github/skills/*/SKILL.md`.
    - Prompts are launchers, not full workflow specs.
 
-2. **Deterministic steps use CLIs.**
+2. **Never push or commit on behalf of the user.**
+   - Do NOT run `git push`, `git commit`, `git add`, `git checkout -b`, or any command that creates branches, commits, or pushes to a remote.
+   - File edits are made to the working tree only. The user commits and deploys when ready.
+
+3. **Deterministic steps use CLIs.**
    - Prefer explicit `pageseeds automation seo ...`, `pageseeds reddit ...` calls.
    - Avoid shell parsing pipelines for core logic.
 

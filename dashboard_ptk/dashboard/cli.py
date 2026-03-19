@@ -6,6 +6,7 @@ from pathlib import Path
 
 from prompt_toolkit import PromptSession
 from rich.console import Console
+from rich.table import Table
 
 from .config import PHASES
 from .core.project_manager import ProjectManager
@@ -280,6 +281,248 @@ class Dashboard(
             
             console.print(f"[dim]Last GSC collection:[/dim] [cyan]{date_str}[/cyan] ({days_text})")
             console.print()
+
+    def _parse_iso_datetime(self, value: str | None) -> datetime | None:
+        """Best-effort parser for ISO-ish timestamps persisted in task state."""
+        if not value:
+            return None
+        normalized = str(value).strip()
+        if not normalized:
+            return None
+        try:
+            parsed = datetime.fromisoformat(normalized.replace("Z", "+00:00"))
+            if parsed.tzinfo is not None:
+                parsed = parsed.astimezone().replace(tzinfo=None)
+            return parsed
+        except Exception:
+            return None
+
+    def _days_ago_label(self, dt: datetime | None) -> str:
+        """Render a short recency label for a datetime."""
+        if not dt:
+            return "-"
+        days = max(0, (datetime.now() - dt).days)
+        if days == 0:
+            return "today"
+        if days == 1:
+            return "1d"
+        return f"{days}d"
+
+    def _days_since(self, dt: datetime | None) -> int | None:
+        """Return elapsed whole days, clamped at zero."""
+        if not dt:
+            return None
+        return max(0, (datetime.now() - dt).days)
+
+    def _format_age_with_thresholds(
+        self,
+        dt: datetime | None,
+        *,
+        warn_after_days: int,
+        stale_after_days: int,
+    ) -> str:
+        """Colorize age labels so stale projects stand out in one-screen triage."""
+        days = self._days_since(dt)
+        if days is None:
+            return "-"
+
+        if days == 0:
+            return "[green]today[/green]"
+
+        label = "1d" if days == 1 else f"{days}d"
+        if days >= stale_after_days:
+            return f"[red]{label}[/red]"
+        if days >= warn_after_days:
+            return f"[yellow]{label}[/yellow]"
+        return f"[green]{label}[/green]"
+
+    def _workflow_icon(self, task_type: str) -> str:
+        """Compact visual codes for last-run workflow types."""
+        if task_type.startswith("reddit"):
+            return "💬"
+        if task_type in {"publish_content"}:
+            return "📰"
+        if task_type in {"collect_gsc", "analyze_gsc_performance", "indexing_diagnostics"}:
+            return "📈"
+        if task_type in {"content_review", "content_audit"}:
+            return "🧪"
+        if task_type in {"cluster_and_link"}:
+            return "🔗"
+        if task_type in {"write_article"}:
+            return "✍"
+        if task_type.startswith("research"):
+            return "🔎"
+        return "•"
+
+    def _get_project_dashboard_snapshot(self, project) -> dict:
+        """Return compact summary data for one project for landing-screen overview."""
+        snapshot = {
+            "project": project,
+            "last_task_dt": None,
+            "last_task_label": "-",
+            "last_published_dt": None,
+            "pending_publish": 0,
+            "recent_workflows": [],
+        }
+
+        try:
+            automation_dir = Path(project.repo_root) / ".github" / "automation"
+            task_list_path = automation_dir / "task_list.json"
+            if task_list_path.exists():
+                import json
+
+                data = json.loads(task_list_path.read_text())
+                tasks = data.get("tasks", []) if isinstance(data, dict) else []
+
+                done_tasks = []
+                for task in tasks:
+                    if not isinstance(task, dict):
+                        continue
+
+                    status = str(task.get("status", "")).strip()
+                    if task.get("type") == "publish_content" and status == "todo":
+                        snapshot["pending_publish"] += 1
+
+                    if status not in {"done", "failed"}:
+                        continue
+
+                    last_ts = (
+                        task.get("completed_at")
+                        or task.get("finished_at")
+                        or task.get("failed_at")
+                    )
+                    dt = self._parse_iso_datetime(last_ts)
+                    if not dt:
+                        continue
+
+                    label = task.get("title") or task.get("type") or task.get("id") or "task"
+                    done_tasks.append(
+                        {
+                            "dt": dt,
+                            "label": str(label),
+                            "type": str(task.get("type") or ""),
+                        }
+                    )
+
+                if done_tasks:
+                    done_tasks.sort(key=lambda item: item["dt"], reverse=True)
+                    snapshot["last_task_dt"] = done_tasks[0]["dt"]
+                    snapshot["last_task_label"] = done_tasks[0]["label"]
+
+                    # Keep a short, unique-by-type recent workflow trail for at-a-glance context.
+                    seen_types = set()
+                    recent_workflows = []
+                    for entry in done_tasks:
+                        task_type = entry.get("type", "")
+                        if not task_type or task_type in seen_types:
+                            continue
+                        seen_types.add(task_type)
+                        recent_workflows.append({"type": task_type, "dt": entry["dt"]})
+                        if len(recent_workflows) >= 3:
+                            break
+                    snapshot["recent_workflows"] = recent_workflows
+
+            articles_path = automation_dir / "articles.json"
+            if articles_path.exists():
+                import json
+
+                data = json.loads(articles_path.read_text())
+                articles = data.get("articles", []) if isinstance(data, dict) else []
+                latest = None
+                for article in articles:
+                    if not isinstance(article, dict):
+                        continue
+                    published_date = article.get("published_date")
+                    if not published_date:
+                        continue
+                    try:
+                        dt = datetime.strptime(str(published_date), "%Y-%m-%d")
+                    except Exception:
+                        continue
+
+                    # Treat future dates as scheduled content, not already published.
+                    if dt > datetime.now():
+                        continue
+                    if latest is None or dt > latest:
+                        latest = dt
+                snapshot["last_published_dt"] = latest
+        except Exception:
+            # Keep the overview resilient; one bad project should not break the menu.
+            return snapshot
+
+        return snapshot
+
+    def _render_projects_overview(self) -> None:
+        """Render a condensed cross-project status table on the landing screen."""
+        projects = list(self.project_manager.projects)
+        if not projects:
+            return
+
+        snapshots = [self._get_project_dashboard_snapshot(project) for project in projects]
+        snapshots.sort(
+            key=lambda item: item["last_task_dt"] or datetime.min,
+            reverse=True,
+        )
+
+        table = Table(title="Project Activity", show_header=True, header_style="bold cyan")
+        table.add_column("Project", overflow="fold")
+        table.add_column("Last Task", overflow="fold")
+        table.add_column("Recent Runs", overflow="fold")
+        table.add_column("Last Publish", justify="right")
+        table.add_column("Publish Queue", justify="right")
+
+        for item in snapshots[:8]:
+            project = item["project"]
+            marker = "*" if self.project_manager.current and project.website_id == self.project_manager.current.website_id else " "
+            project_name = f"{marker} {project.name}"
+
+            last_task_dt = item["last_task_dt"]
+            if last_task_dt:
+                task_age = self._format_age_with_thresholds(
+                    last_task_dt,
+                    warn_after_days=3,
+                    stale_after_days=7,
+                )
+                task_title = item["last_task_label"]
+                last_task = f"{task_age} | {task_title[:34]}"
+            else:
+                last_task = "-"
+
+            recent_runs = "-"
+            workflow_entries = item.get("recent_workflows", [])
+            if workflow_entries:
+                parts = []
+                for wf in workflow_entries:
+                    wf_type = str(wf.get("type") or "")
+                    wf_dt = wf.get("dt")
+                    age = self._format_age_with_thresholds(
+                        wf_dt,
+                        warn_after_days=3,
+                        stale_after_days=7,
+                    )
+                    parts.append(f"{self._workflow_icon(wf_type)} {age}")
+                recent_runs = "  ".join(parts)
+
+            last_publish_dt = item["last_published_dt"]
+            if last_publish_dt:
+                publish_age = self._format_age_with_thresholds(
+                    last_publish_dt,
+                    warn_after_days=4,
+                    stale_after_days=10,
+                )
+                last_publish = f"{last_publish_dt.strftime('%Y-%m-%d')} ({publish_age})"
+            else:
+                last_publish = "-"
+
+            pending = item["pending_publish"]
+            queue = f"[green]{pending}[/green]" if pending > 0 else "-"
+            table.add_row(project_name, last_task, recent_runs, last_publish, queue)
+
+        if len(snapshots) > 8:
+            table.caption = f"Showing 8 of {len(snapshots)} projects"
+
+        console.print(table)
+        console.print("[dim]* active project[/dim]\n")
     
     def _check_system_integrity(self) -> list[str]:
         """
@@ -787,7 +1030,8 @@ class Dashboard(
             # Workflow Section
             console.print("\n[bold dim]Run Workflows:[/bold dim]")
             console.print("  [dim]o.[/dim] Orchestrate Now    [dim]u.[/dim] Publish Articles   [dim]i.[/dim] Indexing Diagnostics")
-            console.print("  [dim]n.[/dim] GSC Performance    [dim]h.[/dim] Reddit History")
+            console.print("  [dim]n.[/dim] GSC Performance    [dim]h.[/dim] Reddit History      [dim]e.[/dim] Content Review")
+            console.print("  [dim]a.[/dim] Content Audit")
             
             # Quick Add Tasks Section
             console.print("\n[bold dim]Quick Add Tasks:[/bold dim]")
@@ -832,6 +1076,12 @@ class Dashboard(
                 self.session.prompt("\nPress Enter...")
             elif choice.lower() == "h":
                 self._show_reddit_history()
+                self.session.prompt("\nPress Enter...")
+            elif choice.lower() == "e":
+                self._run_menu_workflow_task("content_review", "Content Review")
+                self.session.prompt("\nPress Enter...")
+            elif choice.lower() == "a":
+                self._run_menu_workflow_task("content_audit", "Content Audit")
                 self.session.prompt("\nPress Enter...")
             elif choice.lower() == "c":
                 self._run_simple_article_creation()
@@ -1522,6 +1772,8 @@ class Dashboard(
             "publish_content": "implementation",
             "indexing_diagnostics": "verification",
             "analyze_gsc_performance": "research",
+            "content_review": "implementation",
+            "content_audit": "research",
         }
         task = existing or self.task_list.create_task(
             task_type=task_type,
@@ -1666,6 +1918,7 @@ class Dashboard(
             # Show last published info card
             self._render_last_published_card()
             self._render_gsc_status_card()
+            self._render_projects_overview()
             
             console.print("[bold]MENU[/bold]\n")
             console.print("1. View/Work on Tasks")

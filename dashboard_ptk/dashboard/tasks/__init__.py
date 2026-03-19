@@ -15,6 +15,8 @@ from .indexing import IndexingRunner
 from .implementation import ImplementationRunner
 from .reddit import RedditRunner
 from .performance import PerformanceRunner
+from .content_review import ContentReviewRunner
+from .content_audit import ContentAuditRunner
 
 
 def build_runner_registry(task_list, project, session) -> dict[str, TaskRunner]:
@@ -30,6 +32,8 @@ def build_runner_registry(task_list, project, session) -> dict[str, TaskRunner]:
         "indexing": IndexingRunner(task_list, project, session),
         "reddit": RedditRunner(task_list, project, session),
         "performance": PerformanceRunner(task_list, project, session),
+        "content_review": ContentReviewRunner(task_list, project, session),
+        "content_audit": ContentAuditRunner(task_list, project, session),
     }
     runners["implementation"] = ImplementationRunner(task_list, project, session, runners)
     return runners
@@ -48,5 +52,7 @@ __all__ = [
     "ImplementationRunner",
     "RedditRunner",
     "PerformanceRunner",
+    "ContentReviewRunner",
+    "ContentAuditRunner",
     "build_runner_registry",
 ]
